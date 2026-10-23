@@ -13,8 +13,101 @@ internal sealed class ClientSession(
 {
     private readonly SemaphoreSlim _sendLock = new(1, 1);
     private long _sequence;
+    private RtcPeerCoordinator? _rtc;
+    private CancellationTokenSource? _sessionCts;
+    private Task? _receivePumpTask;
 
     public SessionPermission Permissions { get; } = permissions;
+
+    public event Action<byte[]>? OnFrameReceived;
+    public event Action<string>? OnStatusMessage;
+
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        _sessionCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        await AnnounceAsync(_sessionCts.Token);
+
+        if (Permissions.HasFlag(SessionPermission.ViewScreen))
+        {
+            _rtc = new RtcPeerCoordinator();
+            _rtc.OnBinaryDataReceived += bytes => OnFrameReceived?.Invoke(bytes);
+            _rtc.OnLocalIceCandidate += async candidate =>
+            {
+                try
+                {
+                    await SendEnvelopeAsync(ControlMessageKind.RtcIceCandidate, candidate, _sessionCts.Token);
+                }
+                catch
+                {
+                    // Ignore transient network errors during ICE exchange
+                }
+            };
+            _rtc.OnConnectionStateChange += state => OnStatusMessage?.Invoke($"WebRTC P2P: {state}");
+
+            await _rtc.InitializeDataChannelAsync("swiftdesk-stream");
+            var offer = await _rtc.CreateOfferAsync();
+            await SendEnvelopeAsync(ControlMessageKind.RtcOffer, offer, _sessionCts.Token);
+        }
+
+        _receivePumpTask = Task.Run(() => ReceivePumpLoopAsync(_sessionCts.Token), _sessionCts.Token);
+    }
+
+    private async Task ReceivePumpLoopAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (socket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
+            {
+                var envelope = await WebSocketProtocol.ReceiveAsync(socket, cancellationToken);
+                if (envelope is null)
+                {
+                    break;
+                }
+
+                switch (envelope.Kind)
+                {
+                    case ControlMessageKind.RtcAnswer:
+                    {
+                        if (_rtc is not null)
+                        {
+                            var answer = ProtocolJson.Deserialize<RtcSessionDescriptionMessage>(envelope.PayloadJson);
+                            ProtocolValidation.Validate(answer);
+                            _rtc.HandleAnswer(answer);
+                        }
+                        break;
+                    }
+
+                    case ControlMessageKind.RtcIceCandidate:
+                    {
+                        if (_rtc is not null)
+                        {
+                            var candidate = ProtocolJson.Deserialize<RtcIceCandidateMessage>(envelope.PayloadJson);
+                            ProtocolValidation.Validate(candidate);
+                            _rtc.AddIceCandidate(candidate);
+                        }
+                        break;
+                    }
+
+                    case ControlMessageKind.ScreenFrame:
+                    {
+                        var frameMsg = ProtocolJson.Deserialize<ScreenFrameMessage>(envelope.PayloadJson);
+                        var bytes = Convert.FromBase64String(frameMsg.Base64Data);
+                        OnFrameReceived?.Invoke(bytes);
+                        break;
+                    }
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected during session shutdown
+        }
+        catch (Exception ex)
+        {
+            OnStatusMessage?.Invoke($"Session pump disconnected: {ex.Message}");
+        }
+    }
 
     public async Task AnnounceAsync(CancellationToken cancellationToken)
     {
@@ -22,6 +115,24 @@ internal sealed class ClientSession(
             ControlMessageKind.PeerReady,
             new PeerReadyMessage("controller", SessionRole.Controller),
             cancellationToken);
+    }
+
+    public async Task SendInputAsync(
+        RemoteInputKind kind,
+        double normalizedX,
+        double normalizedY,
+        string? key = null,
+        int wheelDelta = 0,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Permissions.HasFlag(SessionPermission.ControlInput))
+        {
+            return;
+        }
+
+        var cmd = new InputCommand(kind, normalizedX, normalizedY, key, wheelDelta);
+        ProtocolValidation.Validate(cmd);
+        await SendEnvelopeAsync(ControlMessageKind.Input, cmd, cancellationToken);
     }
 
     public async Task SendFileAsync(string path, CancellationToken cancellationToken)
@@ -92,6 +203,21 @@ internal sealed class ClientSession(
 
     public async ValueTask DisposeAsync()
     {
+        _sessionCts?.Cancel();
+        if (_receivePumpTask is not null)
+        {
+            try
+            {
+                await _receivePumpTask;
+            }
+            catch (OperationCanceledException) { }
+        }
+
+        if (_rtc is not null)
+        {
+            await _rtc.DisposeAsync();
+        }
+
         if (socket.State == WebSocketState.Open)
         {
             await socket.CloseAsync(
@@ -104,4 +230,3 @@ internal sealed class ClientSession(
         _sendLock.Dispose();
     }
 }
-

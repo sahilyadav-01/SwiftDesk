@@ -51,5 +51,39 @@ public sealed class ProtocolValidationTests
         var request = new CreateSessionRequest("dev_abc", "Operator", SessionPermission.ControlInput);
         Assert.Throws<ArgumentException>(() => ProtocolValidation.Validate(request));
     }
+
+    [Fact]
+    public void RtcSessionDescription_ValidatesOffer()
+    {
+        var validOffer = new RtcSessionDescriptionMessage("offer", "v=0\r\no=- 0 0 IN IP4 127.0.0.1\r\ns=-\r\n");
+        ProtocolValidation.Validate(validOffer);
+
+        var emptyOffer = new RtcSessionDescriptionMessage("offer", " ");
+        Assert.Throws<ArgumentException>(() => ProtocolValidation.Validate(emptyOffer));
+    }
+
+    [Fact]
+    public void RtcIceCandidate_ValidatesCandidate()
+    {
+        var validCandidate = new RtcIceCandidateMessage("candidate:1 1 UDP 2122252543 192.168.1.100 50000 typ host", "video", 0);
+        ProtocolValidation.Validate(validCandidate);
+
+        var emptyCandidate = new RtcIceCandidateMessage("  ", null, null);
+        Assert.Throws<ArgumentException>(() => ProtocolValidation.Validate(emptyCandidate));
+    }
+
+    [Fact]
+    public void ScreenFrame_RoundTripsJson()
+    {
+        var frame = new ScreenFrameMessage(10, 1920, 1080, "Jpeg", "ZmFrZSBkYXRh", 1700000000000);
+        var json = ProtocolJson.Serialize(frame);
+        var deserialized = ProtocolJson.Deserialize<ScreenFrameMessage>(json);
+
+        Assert.Equal(frame.Sequence, deserialized.Sequence);
+        Assert.Equal(frame.Width, deserialized.Width);
+        Assert.Equal(frame.Height, deserialized.Height);
+        Assert.Equal(frame.PixelFormat, deserialized.PixelFormat);
+        Assert.Equal(frame.Base64Data, deserialized.Base64Data);
+    }
 }
 

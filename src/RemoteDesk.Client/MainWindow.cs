@@ -1,7 +1,9 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using RemoteDesk.Core;
 using RemoteDesk.Protocol;
@@ -16,13 +18,32 @@ internal sealed class MainWindow : Window, IAsyncDisposable
     private readonly TextBox _operatorName = new() { Text = Environment.UserName };
     private readonly TextBox _deviceId = new() { PlaceholderText = "dev_..." };
     private readonly CheckBox _viewScreen = new() { Content = "View screen", IsChecked = true };
-    private readonly CheckBox _controlInput = new() { Content = "Control input" };
+    private readonly CheckBox _controlInput = new() { Content = "Control input", IsChecked = true };
     private readonly CheckBox _transferFiles = new() { Content = "Transfer files" };
     private readonly CheckBox _reboot = new() { Content = "Reboot device" };
     private readonly Button _connect = new() { Content = "Request connection", HorizontalAlignment = HorizontalAlignment.Left };
-    private readonly TextBlock _status = new() { Text = "Not connected", TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _status = new() { Text = "Ready to connect", TextWrapping = TextWrapping.Wrap };
     private readonly TextBox _filePath = new() { PlaceholderText = "Absolute path to a file" };
     private readonly Button _sendFile = new() { Content = "Send file", IsEnabled = false, HorizontalAlignment = HorizontalAlignment.Left };
+
+    private readonly Image _screenImage = new()
+    {
+        Stretch = Stretch.Uniform,
+        HorizontalAlignment = HorizontalAlignment.Center,
+        VerticalAlignment = VerticalAlignment.Center,
+        Focusable = true,
+    };
+
+    private readonly TextBlock _screenPlaceholderText = new()
+    {
+        Text = "SwiftDesk Remote Screen Viewer\nConnect to a remote agent to view the screen.",
+        Foreground = Brushes.LightGray,
+        TextAlignment = TextAlignment.Center,
+        HorizontalAlignment = HorizontalAlignment.Center,
+        VerticalAlignment = VerticalAlignment.Center,
+    };
+
+    private readonly Border _screenContainer;
     private readonly CancellationTokenSource _shutdown = new();
     private HttpClient? _httpClient;
     private ClientSession? _session;
@@ -30,11 +51,11 @@ internal sealed class MainWindow : Window, IAsyncDisposable
 
     public MainWindow()
     {
-        Title = "RemoteDesk";
-        Width = 960;
-        Height = 720;
-        MinWidth = 720;
-        MinHeight = 560;
+        Title = "SwiftDesk - Cross-Platform Remote Support";
+        Width = 1080;
+        Height = 840;
+        MinWidth = 800;
+        MinHeight = 600;
 
         var permissions = new StackPanel
         {
@@ -58,20 +79,25 @@ internal sealed class MainWindow : Window, IAsyncDisposable
             },
         };
 
-        var screenPlaceholder = new Border
+        var screenGrid = new Grid();
+        screenGrid.Children.Add(_screenImage);
+        screenGrid.Children.Add(_screenPlaceholderText);
+
+        _screenContainer = new Border
         {
-            Height = 260,
-            Background = new SolidColorBrush(Color.Parse("#10141D")),
+            Height = 440,
+            Background = new SolidColorBrush(Color.Parse("#0D1117")),
             CornerRadius = new CornerRadius(8),
-            Child = new TextBlock
-            {
-                Text = "Screen stream placeholder\nNative capture adapters are intentionally not enabled in this foundation.",
-                Foreground = Brushes.LightGray,
-                TextAlignment = TextAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-            },
+            ClipToBounds = true,
+            Child = screenGrid,
         };
+
+        _screenContainer.PointerMoved += OnScreenPointerMoved;
+        _screenContainer.PointerPressed += OnScreenPointerPressed;
+        _screenContainer.PointerReleased += OnScreenPointerReleased;
+        _screenContainer.PointerWheelChanged += OnScreenPointerWheel;
+        KeyDown += OnWindowKeyDown;
+        KeyUp += OnWindowKeyUp;
 
         var filePanel = new StackPanel
         {
@@ -89,12 +115,12 @@ internal sealed class MainWindow : Window, IAsyncDisposable
                 {
                     new TextBlock
                     {
-                        Text = "RemoteDesk",
+                        Text = "SwiftDesk",
                         FontSize = 28,
                         FontWeight = FontWeight.SemiBold,
                     },
                     connectionPanel,
-                    screenPlaceholder,
+                    _screenContainer,
                     filePanel,
                 },
             },
@@ -107,9 +133,97 @@ internal sealed class MainWindow : Window, IAsyncDisposable
                 _viewScreen.IsChecked = true;
             }
         };
+
         _connect.Click += ConnectClickedAsync;
         _sendFile.Click += SendFileClickedAsync;
         Closed += WindowClosed;
+    }
+
+    private void OnScreenPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_session is null || !_session.Permissions.HasFlag(SessionPermission.ControlInput))
+        {
+            return;
+        }
+
+        var (normX, normY) = GetNormalizedCoordinates(e.GetPosition(_screenImage));
+        _ = _session.SendInputAsync(RemoteInputKind.PointerMove, normX, normY);
+    }
+
+    private void OnScreenPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (_session is null || !_session.Permissions.HasFlag(SessionPermission.ControlInput))
+        {
+            return;
+        }
+
+        var (normX, normY) = GetNormalizedCoordinates(e.GetPosition(_screenImage));
+        var props = e.GetCurrentPoint(_screenImage).Properties;
+        string key = props.IsRightButtonPressed ? "Right" : props.IsMiddleButtonPressed ? "Middle" : "Left";
+        _ = _session.SendInputAsync(RemoteInputKind.PointerButtonDown, normX, normY, key);
+    }
+
+    private void OnScreenPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_session is null || !_session.Permissions.HasFlag(SessionPermission.ControlInput))
+        {
+            return;
+        }
+
+        var (normX, normY) = GetNormalizedCoordinates(e.GetPosition(_screenImage));
+        var kind = e.GetCurrentPoint(_screenImage).Properties.PointerUpdateKind;
+        string key = kind switch
+        {
+            PointerUpdateKind.RightButtonReleased => "Right",
+            PointerUpdateKind.MiddleButtonReleased => "Middle",
+            _ => "Left",
+        };
+
+        _ = _session.SendInputAsync(RemoteInputKind.PointerButtonUp, normX, normY, key);
+    }
+
+    private void OnScreenPointerWheel(object? sender, PointerWheelEventArgs e)
+    {
+        if (_session is null || !_session.Permissions.HasFlag(SessionPermission.ControlInput))
+        {
+            return;
+        }
+
+        var (normX, normY) = GetNormalizedCoordinates(e.GetPosition(_screenImage));
+        var delta = (int)(e.Delta.Y * 120);
+        _ = _session.SendInputAsync(RemoteInputKind.MouseWheel, normX, normY, null, delta);
+    }
+
+    private void OnWindowKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (_session is null || !_session.Permissions.HasFlag(SessionPermission.ControlInput) || _screenImage.Source is null)
+        {
+            return;
+        }
+
+        _ = _session.SendInputAsync(RemoteInputKind.KeyDown, 0, 0, e.Key.ToString());
+    }
+
+    private void OnWindowKeyUp(object? sender, KeyEventArgs e)
+    {
+        if (_session is null || !_session.Permissions.HasFlag(SessionPermission.ControlInput) || _screenImage.Source is null)
+        {
+            return;
+        }
+
+        _ = _session.SendInputAsync(RemoteInputKind.KeyUp, 0, 0, e.Key.ToString());
+    }
+
+    private (double X, double Y) GetNormalizedCoordinates(Point pos)
+    {
+        var width = _screenImage.Bounds.Width;
+        var height = _screenImage.Bounds.Height;
+        if (width <= 0 || height <= 0)
+        {
+            return (0.5, 0.5);
+        }
+
+        return (Math.Clamp(pos.X / width, 0.0, 1.0), Math.Clamp(pos.Y / height, 0.0, 1.0));
     }
 
     private async void ConnectClickedAsync(object? sender, Avalonia.Interactivity.RoutedEventArgs eventArgs)
@@ -171,10 +285,15 @@ internal sealed class MainWindow : Window, IAsyncDisposable
                 created.SessionId,
                 status.ControllerTicket,
                 _shutdown.Token);
+
             _session = new ClientSession(created.SessionId, status.GrantedPermissions, socket);
-            await _session.AnnounceAsync(_shutdown.Token);
+            _session.OnFrameReceived += OnRemoteFrameReceived;
+            _session.OnStatusMessage += SetStatus;
+
+            await _session.StartAsync(_shutdown.Token);
+
             _sendFile.IsEnabled = status.GrantedPermissions.HasFlag(SessionPermission.TransferFiles);
-            SetStatus($"Connected with: {status.GrantedPermissions}");
+            SetStatus($"Connected with permissions: {status.GrantedPermissions}");
         }
         catch (OperationCanceledException) when (_shutdown.IsCancellationRequested)
         {
@@ -188,6 +307,24 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         {
             _connect.IsEnabled = true;
         }
+    }
+
+    private void OnRemoteFrameReceived(byte[] frameBytes)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            try
+            {
+                using var stream = new MemoryStream(frameBytes);
+                var bitmap = new Bitmap(stream);
+                _screenImage.Source = bitmap;
+                _screenPlaceholderText.IsVisible = false;
+            }
+            catch
+            {
+                // Ignore transient frame decoding errors
+            }
+        });
     }
 
     private async void SendFileClickedAsync(object? sender, Avalonia.Interactivity.RoutedEventArgs eventArgs)
@@ -256,4 +393,3 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         FontWeight = FontWeight.SemiBold,
     };
 }
-

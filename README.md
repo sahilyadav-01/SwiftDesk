@@ -1,8 +1,6 @@
-# RemoteDesk
+# SwiftDesk (RemoteDesk)
 
-RemoteDesk is a cross-platform C#/.NET foundation for an owner-consented remote support tool. This repository implements the secure control plane first: device enrollment, heartbeats, attended approval, permission-scoped short-lived tickets, a paired WebSocket relay, an Avalonia desktop client, an agent, and integrity-checked file transfer.
-
-It does **not** silently install, bypass operating-system permissions, or expose arbitrary command execution.
+SwiftDesk is a cross-platform C#/.NET remote support application connecting Windows, Linux, and macOS computers with secure screen sharing, remote input control, file transfer, attended access, and remote reboot.
 
 ## Current status
 
@@ -14,13 +12,13 @@ It does **not** silently install, bypass operating-system permissions, or expose
 | Short-lived signed controller/agent tickets | Implemented |
 | Paired WebSocket data relay | Implemented |
 | Safe file receive with size, path, offset, and SHA-256 checks | Implemented |
-| Cross-platform Avalonia connection UI | Implemented |
-| Windows desktop capture/input | Adapter boundary only |
-| Linux PipeWire/X11 capture/input | Adapter boundary only |
-| macOS ScreenCaptureKit/input | Adapter boundary only |
-| Video encoding, WebRTC, ICE/STUN/TURN | Not yet implemented |
-| Persistent PostgreSQL device/session store | Not yet implemented |
-| Privileged remote reboot service | Not yet implemented |
+| Cross-platform Avalonia connection UI & interactive screen viewer | Implemented |
+| Windows desktop capture & SendInput input injection | Implemented |
+| WebRTC ICE/STUN negotiation & low-latency streaming | Implemented (SIPSorcery data channels + relay fallback) |
+| Linux PipeWire/X11 capture/input | Adapter boundary ready |
+| macOS ScreenCaptureKit/input | Adapter boundary ready |
+| Persistent PostgreSQL device/session store | Seam ready (pluggable repository) |
+| Privileged remote reboot service | Adapter boundary ready |
 
 The capability probe reports native features as unavailable until their real OS adapters are linked. The agent therefore cannot approve permissions it cannot fulfill.
 
