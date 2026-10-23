@@ -33,7 +33,7 @@ internal sealed class DeviceRecord(
     public PlatformCapabilityReport? Capabilities { get; set; }
 }
 
-public sealed class DeviceRegistry(TimeProvider timeProvider)
+public sealed class DeviceRegistry(TimeProvider timeProvider) : IDeviceStore
 {
     private readonly ConcurrentDictionary<string, DeviceRecord> _devices = new(StringComparer.Ordinal);
     private readonly TimeProvider _timeProvider = timeProvider;
@@ -105,5 +105,27 @@ public sealed class DeviceRegistry(TimeProvider timeProvider)
                 device.Capabilities);
         }
     }
+
+    public Task<EnrolledDevice> EnrollAsync(string name, string platform, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Enroll(name, platform));
+
+    public Task<bool> ExistsAsync(string deviceId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Exists(deviceId));
+
+    public Task<bool> AuthenticateAsync(string deviceId, string? secret, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Authenticate(deviceId, secret));
+
+    public Task<bool> UpdateHeartbeatAsync(
+        string deviceId,
+        string agentVersion,
+        PlatformCapabilityReport capabilities,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(UpdateHeartbeat(deviceId, agentVersion, capabilities));
+
+    public Task<DeviceSnapshot?> FindAsync(string deviceId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Find(deviceId));
+
+    public Task<IReadOnlyList<DeviceSnapshot>> ListAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<DeviceSnapshot>>(_devices.Keys.Select(Find).Where(s => s is not null).Select(s => s!).ToArray());
 }
 
