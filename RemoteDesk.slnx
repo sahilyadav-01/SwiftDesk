@@ -6,6 +6,7 @@
     <Project Path="src/RemoteDesk.Platform.Linux/RemoteDesk.Platform.Linux.csproj" />
     <Project Path="src/RemoteDesk.Platform.MacOS/RemoteDesk.Platform.MacOS.csproj" />
     <Project Path="src/RemoteDesk.Platform.Windows/RemoteDesk.Platform.Windows.csproj" />
+    <Project Path="src/RemoteDesk.PrivilegedHelper/RemoteDesk.PrivilegedHelper.csproj" />
     <Project Path="src/RemoteDesk.Protocol/RemoteDesk.Protocol.csproj" />
     <Project Path="src/RemoteDesk.Security/RemoteDesk.Security.csproj" />
     <Project Path="src/RemoteDesk.Signaling/RemoteDesk.Signaling.csproj" />

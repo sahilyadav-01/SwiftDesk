@@ -192,18 +192,33 @@ app.MapPost("/api/devices/{deviceId}/requests/{sessionId}", async (
 app.MapPost("/api/sessions", async (
     HttpContext context,
     CreateSessionRequest request,
+    IOperatorAuthService operatorAuth,
     ISessionStore sessions,
     IAuditStore audit) =>
 {
-    if (!MatchesSecret(context.Request.Headers["X-Operator-Key"], serverOptions.OperatorKey))
+    var auth = operatorAuth.Authenticate(
+        context.Request.Headers.Authorization,
+        context.Request.Headers["X-Operator-Key"]);
+    if (!auth.IsSuccess || auth.Identity is null)
     {
-        return Results.Unauthorized();
+        var statusCode = auth.FailureReason is "mfa_required" or "insufficient_role"
+            ? StatusCodes.Status403Forbidden
+            : StatusCodes.Status401Unauthorized;
+        return Results.Json(new ErrorResponse(auth.FailureReason ?? "unauthorized", auth.Description ?? "Operator authentication failed."), statusCode: statusCode);
     }
 
     try
     {
-        var session = await sessions.CreateAsync(request, context.RequestAborted);
-        await audit.RecordEventAsync("SessionCreated", request.DeviceId, session.SessionId, request.OperatorName, $"Requested: {request.RequestedPermissions}", context.RequestAborted);
+        var verifiedOperator = !string.IsNullOrWhiteSpace(auth.Identity.DisplayName) ? auth.Identity.DisplayName : auth.Identity.Subject;
+        var verifiedRequest = request with { OperatorName = verifiedOperator };
+        var session = await sessions.CreateAsync(verifiedRequest, context.RequestAborted);
+        await audit.RecordEventAsync(
+            "SessionCreated",
+            request.DeviceId,
+            session.SessionId,
+            auth.Identity.Subject,
+            $"Requested: {request.RequestedPermissions} | MFA: {auth.Identity.IsMfaAuthenticated} | Roles: {string.Join(',', auth.Identity.Roles)}",
+            context.RequestAborted);
         return Results.Ok(new CreateSessionResponse(session.SessionId, session.State, session.ExpiresAt));
     }
     catch (KeyNotFoundException exception)
@@ -219,11 +234,18 @@ app.MapPost("/api/sessions", async (
 app.MapGet("/api/sessions/{sessionId}", async (
     HttpContext context,
     string sessionId,
+    IOperatorAuthService operatorAuth,
     ISessionStore sessions) =>
 {
-    if (!MatchesSecret(context.Request.Headers["X-Operator-Key"], serverOptions.OperatorKey))
+    var auth = operatorAuth.Authenticate(
+        context.Request.Headers.Authorization,
+        context.Request.Headers["X-Operator-Key"]);
+    if (!auth.IsSuccess || auth.Identity is null)
     {
-        return Results.Unauthorized();
+        var statusCode = auth.FailureReason is "mfa_required" or "insufficient_role"
+            ? StatusCodes.Status403Forbidden
+            : StatusCodes.Status401Unauthorized;
+        return Results.Json(new ErrorResponse(auth.FailureReason ?? "unauthorized", auth.Description ?? "Operator authentication failed."), statusCode: statusCode);
     }
 
     try
@@ -239,14 +261,21 @@ app.MapGet("/api/sessions/{sessionId}", async (
 
 app.MapGet("/api/audit", async (
     HttpContext context,
+    IOperatorAuthService operatorAuth,
     IAuditStore audit,
     [FromQuery] string? deviceId,
     [FromQuery] string? sessionId,
     [FromQuery] int limit = 50) =>
 {
-    if (!MatchesSecret(context.Request.Headers["X-Operator-Key"], serverOptions.OperatorKey))
+    var auth = operatorAuth.Authenticate(
+        context.Request.Headers.Authorization,
+        context.Request.Headers["X-Operator-Key"]);
+    if (!auth.IsSuccess || auth.Identity is null)
     {
-        return Results.Unauthorized();
+        var statusCode = auth.FailureReason is "mfa_required" or "insufficient_role"
+            ? StatusCodes.Status403Forbidden
+            : StatusCodes.Status401Unauthorized;
+        return Results.Json(new ErrorResponse(auth.FailureReason ?? "unauthorized", auth.Description ?? "Operator authentication failed."), statusCode: statusCode);
     }
 
     var events = await audit.GetEventsAsync(deviceId, sessionId, limit, context.RequestAborted);
