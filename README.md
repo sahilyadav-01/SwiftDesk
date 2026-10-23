@@ -186,7 +186,17 @@ dotnet run --project src/RemoteDesk.Client
 - **Local Short-Circuit**: When both peers land on the same instance, messages are pumped in-memory with zero overhead.
 
 ### Cross-Platform Packaging & Installers
-- **Windows MSI**: WiX manifest ([`SwiftDesk.wxs`](file:///c:/Users/sahil%20yadav/Desktop/SwiftDesk/packaging/windows/SwiftDesk.wxs)) and PowerShell build script installing the application binaries, configuring the `SwiftDeskPrivilegedHelper` Windows Service, and setting up `%ProgramData%\SwiftDesk` with restricted ACLs.
+- **Windows MSI**: WiX manifest ([`SwiftDesk.wxs`](file:///c:/Users/sahil%20yadav/Desktop/SwiftDesk/packaging/windows/SwiftDesk.wxs)) and PowerShell build script ([`build-msi.ps1`](file:///c:/Users/sahil%20yadav/Desktop/SwiftDesk/packaging/windows/build-msi.ps1)) installing the application binaries, configuring the `SwiftDeskPrivilegedHelper` Windows Service, and setting up `%ProgramData%\SwiftDesk` with restricted ACLs.
+  ```powershell
+  # Build the Windows MSI installer
+  .\packaging\windows\build-msi.ps1 -Configuration Release
+
+  # Install silently with Windows Service registration
+  msiexec /i .\packaging\windows\SwiftDesk-1.0.0-Setup.msi /qn
+
+  # Uninstall
+  msiexec /x .\packaging\windows\SwiftDesk-1.0.0-Setup.msi /qn
+  ```
 - **Linux Packages**: Debian ([`.deb`](file:///c:/Users/sahil%20yadav/Desktop/SwiftDesk/packaging/linux/debian/control)) control/postinst/prerm, RPM ([`.spec`](file:///c:/Users/sahil%20yadav/Desktop/SwiftDesk/packaging/linux/rpm/swiftdesk.spec)), and hardened [systemd unit](file:///c:/Users/sahil%20yadav/Desktop/SwiftDesk/packaging/linux/systemd/swiftdesk-privileged-reboot.service) (`ProtectSystem=strict`, `NoNewPrivileges=yes`).
 - **macOS Installer**: Packaging script ([`build-macos-pkg.sh`](file:///c:/Users/sahil%20yadav/Desktop/SwiftDesk/packaging/macos/build-macos-pkg.sh)), launchd daemon plist ([`com.swiftdesk.privilegedhelper.plist`](file:///c:/Users/sahil%20yadav/Desktop/SwiftDesk/packaging/macos/LaunchDaemons/com.swiftdesk.privilegedhelper.plist)), and postinstall script for `/Library/LaunchDaemons/`.
 
