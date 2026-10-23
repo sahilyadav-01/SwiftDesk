@@ -1,5 +1,13 @@
 {
   "version": 1,
   "isRoot": true,
-  "tools": {}
+  "tools": {
+    "wix": {
+      "version": "5.0.2",
+      "commands": [
+        "wix"
+      ],
+      "rollForward": false
+    }
+  }
 }
