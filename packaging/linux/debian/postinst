@@ -1,0 +1,23 @@
+#!/bin/bash
+set -e
+
+# Create restricted configuration directory
+mkdir -p /etc/swiftdesk
+chmod 700 /etc/swiftdesk
+chown root:root /etc/swiftdesk
+
+# Generate 32-byte secret key if not already present
+if [ ! -f /etc/swiftdesk/reboot.key ]; then
+    head -c 32 /dev/urandom > /etc/swiftdesk/reboot.key
+    chmod 600 /etc/swiftdesk/reboot.key
+    chown root:root /etc/swiftdesk/reboot.key
+fi
+
+# Reload systemd and enable privileged helper service
+if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload
+    systemctl enable swiftdesk-privileged-reboot.service
+    systemctl restart swiftdesk-privileged-reboot.service || true
+fi
+
+exit 0

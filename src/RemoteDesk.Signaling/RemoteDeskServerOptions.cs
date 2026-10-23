@@ -19,5 +19,8 @@ public sealed class RemoteDeskServerOptions
     public List<string> OidcRsaPublicKeyPems { get; init; } = [];
     public List<string> AllowedOperatorRoles { get; init; } = ["SupportOperator", "Administrator", "Operator"];
     public bool AllowLegacyOperatorKey { get; init; } = true;
+
+    // Clustered Turn Relay / Redis Backplane
+    public string? RedisConnection { get; init; }
 }
 

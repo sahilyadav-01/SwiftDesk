@@ -1,0 +1,11 @@
+Package: swiftdesk
+Version: 1.0.0
+Section: utils
+Priority: optional
+Architecture: amd64
+Maintainer: SwiftDesk Developers <support@swiftdesk.internal>
+Depends: libc6 (>= 2.34), libx11-6, libxtst6, libpipewire-0.3-0 (>= 0.3.50)
+Description: Cross-platform enterprise remote desktop and support client
+ SwiftDesk delivers low-latency screen streaming, remote input injection,
+ chunked integrity-checked file transfers, audited remote reboot, and
+ enterprise OIDC/MFA operator authentication.

@@ -67,6 +67,18 @@ else
     builder.Services.AddSingleton<IAuditStore, InMemoryAuditStore>();
 }
 
+var redisConn = builder.Configuration.GetConnectionString("Redis")
+    ?? builder.Configuration[$"{RemoteDeskServerOptions.SectionName}:RedisConnection"];
+
+if (!string.IsNullOrWhiteSpace(redisConn))
+{
+    builder.Services.AddSingleton<IRelayBackplane>(_ => new RedisRelayBackplane(redisConn));
+}
+else
+{
+    builder.Services.AddSingleton<IRelayBackplane, InMemoryRelayBackplane>();
+}
+
 builder.Services.AddSingleton<SessionRelayHub>();
 
 var app = builder.Build();

@@ -9,6 +9,7 @@
     <ProjectReference Include="../RemoteDesk.Platform.Windows/RemoteDesk.Platform.Windows.csproj" />
     <ProjectReference Include="../RemoteDesk.Platform.Linux/RemoteDesk.Platform.Linux.csproj" />
     <ProjectReference Include="../RemoteDesk.Platform.MacOS/RemoteDesk.Platform.MacOS.csproj" />
+    <ProjectReference Include="../RemoteDesk.PrivilegedHelper/RemoteDesk.PrivilegedHelper.csproj" />
   </ItemGroup>
 </Project>
 

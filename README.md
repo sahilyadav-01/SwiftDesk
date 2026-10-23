@@ -156,7 +156,45 @@ dotnet run --project src/RemoteDesk.Client
 
 ---
 
-## Next Roadmap Milestones
+## Enterprise Security & Architecture Additions
 
-1. **Production Identity**: Integrate OIDC / MFA provider for enterprise operator authentication.
-2. **Privileged Remote Reboot**: Implement separately installed, signed, least-privilege reboot service.
+### Enterprise Production Identity (OIDC & MFA)
+- **Token Verification**: Evaluates OpenID Connect (OIDC) JWT tokens using asymmetric RSA public keys (`RS256`) or HMAC keys (`HS256`).
+- **MFA Enforcement**: Evaluates `amr` (Authentication Methods Reference) and `acr` claims. Requests without verified multi-factor credentials (e.g., FIDO2, WebAuthn, OTP, hardware key) receive `403 Forbidden` (`mfa_required`).
+- **Role-Based Access Control (RBAC)**: Validates enterprise operator roles (`SupportOperator`, `Administrator`).
+- **Identity Attribution**: Binds operator identity to validated claims (`sub`, `name`, `email`) rather than client-supplied strings, guaranteeing an unforgeable PostgreSQL audit trail.
+
+### Privileged Remote Reboot Service
+- **Separation of Privilege**: The interactive user agent never runs with root/SYSTEM privileges. Screen capture and input injection remain strictly confined to the user session.
+- **Dedicated Daemon**: A lightweight, standalone service (`RemoteDesk.PrivilegedHelper`) runs as a system service.
+- **Audited IPC Protocol**: Communicates over local-only Named Pipes (Windows) or Unix Domain Sockets (Linux/macOS) using length-prefixed framing.
+- **Cryptographic Guarantees**:
+  - Request HMAC-SHA256 signature using a machine-local root secret (`%ProgramData%\SwiftDesk\reboot.key` or `/etc/swiftdesk/reboot.key`).
+  - Replay protection with tracked cryptographic nonces.
+  - Strict ±30-second timestamp freshness window.
+  - Input sanitization against shell and command injection.
+  - Enforced 60-second rate-limiting cooldown to prevent reboot loops.
+
+### Wayland Portal Integration (PipeWire & xdg-desktop-portal)
+- **ScreenCast via PipeWire**: Coordinates with `org.freedesktop.portal.ScreenCast` over session D-Bus and probes `libpipewire-0.3.so.0` for Wayland compositors (GNOME Mutter, KDE KWin, Sway).
+- **Remote Desktop & Input**: Dispatches input events through `org.freedesktop.portal.RemoteDesktop` and `libei`.
+- **Hybrid Probing**: Detects session environment (`$WAYLAND_DISPLAY`, `$XDG_SESSION_TYPE`, `$DISPLAY`) and falls back cleanly to X11 when running under XWayland or traditional X11.
+
+### Clustered Relay Fallback (Redis Pub/Sub Backplane)
+- **Zero Sticky Sessions**: When peers in a session connect to different signaling nodes (e.g. Controller on Node 1, Agent on Node 2), traffic is bridged across nodes through `RedisRelayBackplane`.
+- **Pub/Sub Channels**: Channels partitioned as `swiftdesk:relay:{sessionId}:{role}`.
+- **Local Short-Circuit**: When both peers land on the same instance, messages are pumped in-memory with zero overhead.
+
+### Cross-Platform Packaging & Installers
+- **Windows MSI**: WiX manifest ([`SwiftDesk.wxs`](file:///c:/Users/sahil%20yadav/Desktop/SwiftDesk/packaging/windows/SwiftDesk.wxs)) and PowerShell build script installing the application binaries, configuring the `SwiftDeskPrivilegedHelper` Windows Service, and setting up `%ProgramData%\SwiftDesk` with restricted ACLs.
+- **Linux Packages**: Debian ([`.deb`](file:///c:/Users/sahil%20yadav/Desktop/SwiftDesk/packaging/linux/debian/control)) control/postinst/prerm, RPM ([`.spec`](file:///c:/Users/sahil%20yadav/Desktop/SwiftDesk/packaging/linux/rpm/swiftdesk.spec)), and hardened [systemd unit](file:///c:/Users/sahil%20yadav/Desktop/SwiftDesk/packaging/linux/systemd/swiftdesk-privileged-reboot.service) (`ProtectSystem=strict`, `NoNewPrivileges=yes`).
+- **macOS Installer**: Packaging script ([`build-macos-pkg.sh`](file:///c:/Users/sahil%20yadav/Desktop/SwiftDesk/packaging/macos/build-macos-pkg.sh)), launchd daemon plist ([`com.swiftdesk.privilegedhelper.plist`](file:///c:/Users/sahil%20yadav/Desktop/SwiftDesk/packaging/macos/LaunchDaemons/com.swiftdesk.privilegedhelper.plist)), and postinstall script for `/Library/LaunchDaemons/`.
+
+---
+
+## Production Deployment Checklist
+
+1. **Signaling & Clustered Relays**: Deploy via `docker compose up -d` with PostgreSQL and Redis.
+2. **Enterprise IdP**: Configure OIDC issuer (`OidcIssuer`) and audience (`OidcAudience`) with `RequireMfa: true`.
+3. **Privileged Helper Daemons**: Deploy and start the signed privileged helper service on managed endpoints.
+4. **Desktop Clients**: Distribute the signed MSI, PKG, or DEB installers to operators and end users.

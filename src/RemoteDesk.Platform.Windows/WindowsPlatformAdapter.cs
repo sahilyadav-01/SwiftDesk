@@ -8,8 +8,9 @@ using RemoteDesk.Core;
 namespace RemoteDesk.Platform.Windows;
 
 [SupportedOSPlatform("windows")]
-public sealed partial class WindowsPlatformAdapter : IRemotePlatformAdapter
+public sealed partial class WindowsPlatformAdapter(IPrivilegedRebootClient? rebootClient = null) : IRemotePlatformAdapter
 {
+    private readonly IPrivilegedRebootClient? _rebootClient = rebootClient;
     private const int SM_XVIRTUALSCREEN = 76;
     private const int SM_YVIRTUALSCREEN = 77;
     private const int SM_CXVIRTUALSCREEN = 78;
@@ -107,12 +108,22 @@ public sealed partial class WindowsPlatformAdapter : IRemotePlatformAdapter
         requirements.Add("Screen capture enabled via desktop surface capture (GDI/Bitmap).");
         requirements.Add("Input control enabled via Windows SendInput API.");
 
+        var rebootAvailable = _rebootClient?.IsAvailable == true;
+        if (rebootAvailable)
+        {
+            requirements.Add("Privileged remote reboot enabled via dedicated SwiftDesk reboot service.");
+        }
+        else
+        {
+            requirements.Add("Privileged remote reboot service is not installed or configured on this host.");
+        }
+
         return ValueTask.FromResult(new PlatformCapabilityReport(
             "Windows",
             ScreenCaptureAvailable: true,
             InputControlAvailable: true,
             FileTransferAvailable: true,
-            RebootAvailable: false,
+            RebootAvailable: rebootAvailable,
             requirements));
     }
 
@@ -337,6 +348,17 @@ public sealed partial class WindowsPlatformAdapter : IRemotePlatformAdapter
             _ => (0, 0),
         };
 
-    public ValueTask RebootAsync(string reason, CancellationToken cancellationToken = default) =>
-        ValueTask.FromException(new NotSupportedException("Remote reboot requires a separately audited privileged service."));
+    public async ValueTask RebootAsync(string reason, CancellationToken cancellationToken = default)
+    {
+        if (_rebootClient is null || !_rebootClient.IsAvailable)
+        {
+            throw new NotSupportedException("Remote reboot requires the separately installed SwiftDesk privileged reboot service.");
+        }
+
+        var result = await _rebootClient.RequestRebootAsync("windows_host_session", reason, cancellationToken);
+        if (!result.Success)
+        {
+            throw new InvalidOperationException($"Privileged reboot request failed: {result.Message} ({result.ErrorCode})");
+        }
+    }
 }

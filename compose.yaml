@@ -9,9 +9,12 @@ services:
       RemoteDesk__OperatorKey: "${REMOTEDESK_OPERATOR_KEY:?set REMOTEDESK_OPERATOR_KEY}"
       RemoteDesk__SigningKey: "${REMOTEDESK_SIGNING_KEY:?set REMOTEDESK_SIGNING_KEY}"
       RemoteDesk__PostgresConnection: "Host=db;Port=5432;Database=swiftdesk;Username=swiftdesk;Password=swiftdesk_secure_pass"
+      RemoteDesk__RedisConnection: "redis:6379"
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
     restart: unless-stopped
 
   db:
@@ -29,6 +32,12 @@ services:
       retries: 5
     volumes:
       - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
     restart: unless-stopped
 
 volumes:

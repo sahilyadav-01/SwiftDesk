@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.IO.Pipes;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -56,23 +57,14 @@ public sealed class PrivilegedRebootIpcServer(
         {
             try
             {
-                var request = await JsonSerializer.DeserializeAsync<PrivilegedRebootRequest>(
-                    stream,
-                    JsonOptions,
-                    cancellationToken);
+                var requestBytes = await IpcFraming.ReadMessageAsync(stream, cancellationToken);
+                var request = JsonSerializer.Deserialize<PrivilegedRebootRequest>(requestBytes, JsonOptions);
+                var response = request is null
+                    ? PrivilegedRebootResponse.Failed("invalid_json", "Failed to deserialize reboot request.")
+                    : _engine.ProcessRequest(request);
 
-                PrivilegedRebootResponse response;
-                if (request is null)
-                {
-                    response = PrivilegedRebootResponse.Failed("invalid_json", "Failed to deserialize reboot request.");
-                }
-                else
-                {
-                    response = _engine.ProcessRequest(request);
-                }
-
-                await JsonSerializer.SerializeAsync(stream, response, JsonOptions, cancellationToken);
-                await stream.FlushAsync(cancellationToken);
+                var responseBytes = JsonSerializer.SerializeToUtf8Bytes(response, JsonOptions);
+                await IpcFraming.WriteMessageAsync(stream, responseBytes, cancellationToken);
             }
             catch
             {
@@ -128,15 +120,13 @@ public sealed class PrivilegedRebootClient : IPrivilegedRebootClient
         try
         {
             await clientStream.ConnectAsync(3000, cancellationToken);
-            await JsonSerializer.SerializeAsync(clientStream, request, JsonOptions, cancellationToken);
-            await clientStream.FlushAsync(cancellationToken);
 
-            var response = await JsonSerializer.DeserializeAsync<PrivilegedRebootResponse>(
-                clientStream,
-                JsonOptions,
-                cancellationToken);
+            var requestBytes = JsonSerializer.SerializeToUtf8Bytes(request, JsonOptions);
+            await IpcFraming.WriteMessageAsync(clientStream, requestBytes, cancellationToken);
 
-            return response ?? PrivilegedRebootResponse.Failed("empty_response", "Privileged reboot helper returned empty response.");
+            var responseBytes = await IpcFraming.ReadMessageAsync(clientStream, cancellationToken);
+            var response = JsonSerializer.Deserialize<PrivilegedRebootResponse>(responseBytes, JsonOptions);
+            return response ?? PrivilegedRebootResponse.Failed("empty_response", "Privileged reboot helper returned null response.");
         }
         catch (TimeoutException)
         {
@@ -146,5 +136,32 @@ public sealed class PrivilegedRebootClient : IPrivilegedRebootClient
         {
             return PrivilegedRebootResponse.Failed("ipc_error", $"Failed to communicate with privileged reboot helper: {exception.Message}");
         }
+    }
+}
+
+internal static class IpcFraming
+{
+    public static async Task WriteMessageAsync(Stream stream, byte[] bytes, CancellationToken cancellationToken)
+    {
+        var lenBytes = new byte[4];
+        BinaryPrimitives.WriteInt32LittleEndian(lenBytes, bytes.Length);
+        await stream.WriteAsync(lenBytes, cancellationToken);
+        await stream.WriteAsync(bytes, cancellationToken);
+        await stream.FlushAsync(cancellationToken);
+    }
+
+    public static async Task<byte[]> ReadMessageAsync(Stream stream, CancellationToken cancellationToken)
+    {
+        var lenBytes = new byte[4];
+        await stream.ReadExactlyAsync(lenBytes, cancellationToken);
+        var len = BinaryPrimitives.ReadInt32LittleEndian(lenBytes);
+        if (len is < 0 or > 1_000_000)
+        {
+            throw new InvalidDataException($"IPC message length {len} is out of allowed range.");
+        }
+
+        var buffer = new byte[len];
+        await stream.ReadExactlyAsync(buffer, cancellationToken);
+        return buffer;
     }
 }

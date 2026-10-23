@@ -1,0 +1,9 @@
+#!/bin/bash
+set -e
+
+if [ -d /run/systemd/system ]; then
+    systemctl stop swiftdesk-privileged-reboot.service || true
+    systemctl disable swiftdesk-privileged-reboot.service || true
+fi
+
+exit 0

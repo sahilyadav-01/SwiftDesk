@@ -4,8 +4,9 @@ using RemoteDesk.Core;
 
 namespace RemoteDesk.Platform.MacOS;
 
-public sealed class MacOSPlatformAdapter : IRemotePlatformAdapter
+public sealed class MacOSPlatformAdapter(IPrivilegedRebootClient? rebootClient = null) : IRemotePlatformAdapter
 {
+    private readonly IPrivilegedRebootClient? _rebootClient = rebootClient;
     private static readonly bool IsMacOS = OperatingSystem.IsMacOS();
     private static readonly Lazy<bool> HasCoreGraphics = new(() =>
         IsMacOS && NativeLibrary.TryLoad("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics", out _));
@@ -76,12 +77,22 @@ public sealed class MacOSPlatformAdapter : IRemotePlatformAdapter
             requirements.Add("ApplicationServices framework is not available.");
         }
 
+        var rebootAvailable = _rebootClient?.IsAvailable == true;
+        if (rebootAvailable)
+        {
+            requirements.Add("Privileged remote reboot enabled via dedicated SwiftDesk reboot helper.");
+        }
+        else
+        {
+            requirements.Add("Privileged remote reboot helper is not installed or configured on this host.");
+        }
+
         return ValueTask.FromResult(new PlatformCapabilityReport(
             "macOS",
             ScreenCaptureAvailable: screenCaptureAvailable,
             InputControlAvailable: inputControlAvailable,
             FileTransferAvailable: true,
-            RebootAvailable: false,
+            RebootAvailable: rebootAvailable,
             requirements));
     }
 
@@ -361,8 +372,19 @@ public sealed class MacOSPlatformAdapter : IRemotePlatformAdapter
         return bmp;
     }
 
-    public ValueTask RebootAsync(string reason, CancellationToken cancellationToken = default) =>
-        ValueTask.FromException(new NotSupportedException("Remote reboot requires a separately audited privileged helper."));
+    public async ValueTask RebootAsync(string reason, CancellationToken cancellationToken = default)
+    {
+        if (_rebootClient is null || !_rebootClient.IsAvailable)
+        {
+            throw new NotSupportedException("Remote reboot requires the separately installed SwiftDesk privileged reboot helper.");
+        }
+
+        var result = await _rebootClient.RequestRebootAsync("macos_host_session", reason, cancellationToken);
+        if (!result.Success)
+        {
+            throw new InvalidOperationException($"Privileged reboot request failed: {result.Message} ({result.ErrorCode})");
+        }
+    }
 
     [StructLayout(LayoutKind.Sequential)]
     public struct CGPoint

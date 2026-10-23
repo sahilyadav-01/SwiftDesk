@@ -7,6 +7,9 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit.v3" />
     <ProjectReference Include="../../src/RemoteDesk.Core/RemoteDesk.Core.csproj" />
+    <ProjectReference Include="../../src/RemoteDesk.Security/RemoteDesk.Security.csproj" />
+    <ProjectReference Include="../../src/RemoteDesk.PrivilegedHelper/RemoteDesk.PrivilegedHelper.csproj" />
+    <ProjectReference Include="../../src/RemoteDesk.Platform.Linux/RemoteDesk.Platform.Linux.csproj" />
   </ItemGroup>
 </Project>
 

@@ -4,8 +4,12 @@ using RemoteDesk.Core;
 
 namespace RemoteDesk.Platform.Linux;
 
-public sealed class LinuxPlatformAdapter : IRemotePlatformAdapter
+public sealed class LinuxPlatformAdapter(
+    IPrivilegedRebootClient? rebootClient = null,
+    IWaylandPortalCoordinator? waylandCoordinator = null) : IRemotePlatformAdapter
 {
+    private readonly IPrivilegedRebootClient? _rebootClient = rebootClient;
+    private readonly IWaylandPortalCoordinator _waylandCoordinator = waylandCoordinator ?? new WaylandPortalCoordinator();
     private const int ZPixmap = 2;
     private const ulong AllPlanes = ~0UL;
 
@@ -20,6 +24,49 @@ public sealed class LinuxPlatformAdapter : IRemotePlatformAdapter
         cancellationToken.ThrowIfCancellationRequested();
         var requirements = new List<string>();
 
+        var waylandStatus = _waylandCoordinator.Probe();
+        if (waylandStatus.IsWaylandSession)
+        {
+            var captureAvailable = waylandStatus.ScreenCastAvailable;
+            var inputAvailable = waylandStatus.RemoteDesktopAvailable;
+
+            if (captureAvailable)
+            {
+                requirements.Add("Wayland ScreenCast portal (org.freedesktop.portal.ScreenCast via PipeWire) available.");
+            }
+            else
+            {
+                requirements.Add("Wayland ScreenCast portal requires active D-Bus session.");
+            }
+
+            if (inputAvailable)
+            {
+                requirements.Add("Wayland RemoteDesktop synthetic input portal (org.freedesktop.portal.RemoteDesktop / libei) available.");
+            }
+            else
+            {
+                requirements.Add("Wayland RemoteDesktop input portal requires active D-Bus session.");
+            }
+
+            var rebootAvailable = _rebootClient?.IsAvailable == true;
+            if (rebootAvailable)
+            {
+                requirements.Add("Privileged remote reboot enabled via dedicated SwiftDesk reboot service.");
+            }
+            else
+            {
+                requirements.Add("Privileged remote reboot service is not installed or configured on this host.");
+            }
+
+            return ValueTask.FromResult(new PlatformCapabilityReport(
+                "Linux (Wayland)",
+                ScreenCaptureAvailable: captureAvailable,
+                InputControlAvailable: inputAvailable,
+                FileTransferAvailable: true,
+                RebootAvailable: rebootAvailable,
+                requirements));
+        }
+
         if (!IsLinux)
         {
             requirements.Add("This adapter can only run on Linux.");
@@ -32,21 +79,7 @@ public sealed class LinuxPlatformAdapter : IRemotePlatformAdapter
                 requirements));
         }
 
-        var isWayland = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WAYLAND_DISPLAY"));
         var hasDisplay = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISPLAY"));
-
-        if (isWayland)
-        {
-            requirements.Add("Wayland session detected: ScreenCast portal (xdg-desktop-portal/PipeWire) required.");
-            requirements.Add("Synthetic input on Wayland requires libei or compositor-specific virtual-input support.");
-            return ValueTask.FromResult(new PlatformCapabilityReport(
-                "Linux (Wayland)",
-                ScreenCaptureAvailable: false,
-                InputControlAvailable: false,
-                FileTransferAvailable: true,
-                RebootAvailable: false,
-                requirements));
-        }
 
         if (hasDisplay && HasLibX11.Value)
         {
@@ -61,12 +94,22 @@ public sealed class LinuxPlatformAdapter : IRemotePlatformAdapter
                 requirements.Add("libXtst not found; input injection is disabled.");
             }
 
+            var rebootAvailable = _rebootClient?.IsAvailable == true;
+            if (rebootAvailable)
+            {
+                requirements.Add("Privileged remote reboot enabled via dedicated SwiftDesk reboot service.");
+            }
+            else
+            {
+                requirements.Add("Privileged remote reboot service is not installed or configured on this host.");
+            }
+
             return ValueTask.FromResult(new PlatformCapabilityReport(
                 "Linux (X11)",
                 ScreenCaptureAvailable: true,
                 InputControlAvailable: inputAvailable,
                 FileTransferAvailable: true,
-                RebootAvailable: false,
+                RebootAvailable: rebootAvailable,
                 requirements));
         }
 
@@ -76,7 +119,7 @@ public sealed class LinuxPlatformAdapter : IRemotePlatformAdapter
             ScreenCaptureAvailable: false,
             InputControlAvailable: false,
             FileTransferAvailable: true,
-            RebootAvailable: false,
+            RebootAvailable: _rebootClient?.IsAvailable == true,
             requirements));
     }
 
@@ -178,6 +221,11 @@ public sealed class LinuxPlatformAdapter : IRemotePlatformAdapter
         if (!IsLinux)
         {
             throw new PlatformNotSupportedException("Linux input injection is only supported on Linux.");
+        }
+
+        if (_waylandCoordinator.Probe().IsWaylandSession)
+        {
+            return _waylandCoordinator.InjectInputAsync(input, cancellationToken);
         }
 
         if (!HasLibXtst.Value)
@@ -327,8 +375,19 @@ public sealed class LinuxPlatformAdapter : IRemotePlatformAdapter
     private static void BinaryPrimitivesWriteInt16LittleEndian(Span<byte> destination, short value) =>
         System.Buffers.Binary.BinaryPrimitives.WriteInt16LittleEndian(destination, value);
 
-    public ValueTask RebootAsync(string reason, CancellationToken cancellationToken = default) =>
-        ValueTask.FromException(new NotSupportedException("Remote reboot requires a separately audited privileged service."));
+    public async ValueTask RebootAsync(string reason, CancellationToken cancellationToken = default)
+    {
+        if (_rebootClient is null || !_rebootClient.IsAvailable)
+        {
+            throw new NotSupportedException("Remote reboot requires the separately installed SwiftDesk privileged reboot service.");
+        }
+
+        var result = await _rebootClient.RequestRebootAsync("linux_host_session", reason, cancellationToken);
+        if (!result.Success)
+        {
+            throw new InvalidOperationException($"Privileged reboot request failed: {result.Message} ({result.ErrorCode})");
+        }
+    }
 
     private static class X11Interop
     {

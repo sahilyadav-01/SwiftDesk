@@ -1,0 +1,22 @@
+[Unit]
+Description=SwiftDesk Privileged Remote Reboot Helper
+Documentation=https://github.com/sahilyadav-01/SwiftDesk
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/swiftdesk/RemoteDesk.PrivilegedHelper
+Restart=always
+RestartSec=5s
+User=root
+Group=root
+
+# Hardened security sandbox
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_SYS_BOOT
+
+[Install]
+WantedBy=multi-user.target

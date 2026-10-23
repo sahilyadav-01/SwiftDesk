@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="SwiftDesk Remote Desktop"
+           Manufacturer="SwiftDesk Technologies"
+           Version="1.0.0"
+           UpgradeCode="4C6F4B61-9E2A-4B6A-8A9C-7F6F1D9E3B4C"
+           Language="1033">
+    
+    <MajorUpgrade DowngradeErrorMessage="A newer version of SwiftDesk is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="SwiftDesk">
+        <Component Id="ClientExecutable" Guid="5D6E7F8A-9B0C-1D2E-3F4A-5B6C7D8E9F0A">
+          <File Source="publish/RemoteDesk.Client.exe" KeyPath="yes" />
+        </Component>
+
+        <Component Id="AgentExecutable" Guid="6E7F8A9B-0C1D-2E3F-4A5B-6C7D8E9F0A1B">
+          <File Source="publish/RemoteDesk.Agent.exe" KeyPath="yes" />
+        </Component>
+
+        <Component Id="PrivilegedHelperService" Guid="7F8A9B0C-1D2E-3F4A-5B6C-7D8E9F0A1B2C">
+          <File Source="publish/RemoteDesk.PrivilegedHelper.exe" KeyPath="yes" />
+          <ServiceInstall
+              Id="SwiftDeskHelperServiceInstall"
+              Name="SwiftDeskPrivilegedHelper"
+              DisplayName="SwiftDesk Privileged Remote Reboot Helper"
+              Description="Least-privilege helper service executing authenticated, signed, and rate-limited remote reboots for SwiftDesk."
+              Type="ownProcess"
+              Start="auto"
+              ErrorControl="normal" />
+          <ServiceControl
+              Id="SwiftDeskHelperServiceControl"
+              Name="SwiftDeskPrivilegedHelper"
+              Start="install"
+              Stop="both"
+              Remove="uninstall"
+              Wait="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="SwiftDeskDataFolder" Name="SwiftDesk">
+        <Component Id="MachineSecretDirectory" Guid="8A9B0C1D-2E3F-4A5B-6C7D-8E9F0A1B2C3D">
+          <CreateFolder>
+            <Permission User="NT AUTHORITY\SYSTEM" GenericAll="yes" />
+            <Permission User="Administrators" GenericAll="yes" />
+          </CreateFolder>
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="MainApplication" Title="SwiftDesk Core" Level="1">
+      <ComponentRef Id="ClientExecutable" />
+      <ComponentRef Id="AgentExecutable" />
+      <ComponentRef Id="PrivilegedHelperService" />
+      <ComponentRef Id="MachineSecretDirectory" />
+    </Feature>
+  </Package>
+</Wix>

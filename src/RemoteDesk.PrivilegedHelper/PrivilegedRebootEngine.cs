@@ -157,7 +157,7 @@ public sealed class PrivilegedRebootEngine
         }
 
         // 4. Signature Verification
-        var expectedSignature = ComputeSignature(_secretKey, request.SessionId, request.TimestampUnixMs, request.Nonce, request.Reason);
+        var expectedSignature = ComputeSignature(_secretKey, request.SessionId, request.TimestampUnixMs, request.Nonce, request.Reason ?? string.Empty);
         byte[] suppliedSigBytes;
         try
         {

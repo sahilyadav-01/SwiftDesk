@@ -1,0 +1,30 @@
+#!/bin/bash
+set -e
+
+APP_SUPPORT="/Library/Application Support/SwiftDesk"
+mkdir -p "$APP_SUPPORT"
+chmod 755 "$APP_SUPPORT"
+
+# Create root-only machine reboot secret if missing
+KEY_PATH="$APP_SUPPORT/reboot.key"
+if [ ! -f "$KEY_PATH" ]; then
+    head -c 32 /dev/urandom > "$KEY_PATH"
+    chmod 600 "$KEY_PATH"
+    chown root:wheel "$KEY_PATH"
+fi
+
+# Install and load launchd daemon
+PLIST_SRC="/Library/Application Support/SwiftDesk/com.swiftdesk.privilegedhelper.plist"
+PLIST_DST="/Library/LaunchDaemons/com.swiftdesk.privilegedhelper.plist"
+
+if [ -f "$PLIST_SRC" ]; then
+    cp "$PLIST_SRC" "$PLIST_DST"
+    chown root:wheel "$PLIST_DST"
+    chmod 644 "$PLIST_DST"
+
+    # Bootstrap or restart daemon
+    launchctl bootout system "$PLIST_DST" 2>/dev/null || true
+    launchctl bootstrap system "$PLIST_DST" || true
+fi
+
+exit 0
