@@ -15,13 +15,13 @@ internal sealed class ManagedSession(SessionSnapshot snapshot)
 }
 
 public sealed class SessionRegistry(
-    DeviceRegistry devices,
+    IDeviceStore devices,
     SessionTokenService tokenService,
     TimeProvider timeProvider,
-    RemoteDeskServerOptions options)
+    RemoteDeskServerOptions options) : ISessionStore
 {
     private readonly ConcurrentDictionary<string, ManagedSession> _sessions = new(StringComparer.Ordinal);
-    private readonly DeviceRegistry _devices = devices;
+    private readonly IDeviceStore _devices = devices;
     private readonly SessionTokenService _tokenService = tokenService;
     private readonly TimeProvider _timeProvider = timeProvider;
     private readonly RemoteDeskServerOptions _options = options;
@@ -29,7 +29,7 @@ public sealed class SessionRegistry(
     public SessionSnapshot Create(CreateSessionRequest request)
     {
         ProtocolValidation.Validate(request);
-        if (!_devices.Exists(request.DeviceId))
+        if (!_devices.ExistsAsync(request.DeviceId).GetAwaiter().GetResult())
         {
             throw new KeyNotFoundException("Target device was not found.");
         }
