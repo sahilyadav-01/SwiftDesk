@@ -66,28 +66,54 @@ public sealed class SignalingApiClient(HttpClient httpClient)
             cancellationToken);
 
     public Task<CreateSessionResponse> CreateSessionAsync(
-        string operatorKey,
+        string operatorTokenOrKey,
         CreateSessionRequest request,
-        CancellationToken cancellationToken = default) =>
-        SendAsync<CreateSessionRequest, CreateSessionResponse>(
+        CancellationToken cancellationToken = default)
+    {
+        var (header, value) = ResolveOperatorHeader(operatorTokenOrKey);
+        return SendAsync<CreateSessionRequest, CreateSessionResponse>(
             HttpMethod.Post,
             "/api/sessions",
             request,
-            "X-Operator-Key",
-            operatorKey,
+            header,
+            value,
             cancellationToken);
+    }
 
     public Task<SessionStatusResponse> GetSessionStatusAsync(
-        string operatorKey,
+        string operatorTokenOrKey,
         string sessionId,
-        CancellationToken cancellationToken = default) =>
-        SendAsync<object, SessionStatusResponse>(
+        CancellationToken cancellationToken = default)
+    {
+        var (header, value) = ResolveOperatorHeader(operatorTokenOrKey);
+        return SendAsync<object, SessionStatusResponse>(
             HttpMethod.Get,
             $"/api/sessions/{Uri.EscapeDataString(sessionId)}",
             null,
-            "X-Operator-Key",
-            operatorKey,
+            header,
+            value,
             cancellationToken);
+    }
+
+    private static (string Header, string Value) ResolveOperatorHeader(string tokenOrKey)
+    {
+        if (string.IsNullOrWhiteSpace(tokenOrKey))
+        {
+            return ("X-Operator-Key", string.Empty);
+        }
+
+        if (tokenOrKey.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            return ("Authorization", tokenOrKey);
+        }
+
+        if (tokenOrKey.Contains('.'))
+        {
+            return ("Authorization", $"Bearer {tokenOrKey}");
+        }
+
+        return ("X-Operator-Key", tokenOrKey);
+    }
 
     public async Task<ClientWebSocket> ConnectSessionAsync(
         string sessionId,

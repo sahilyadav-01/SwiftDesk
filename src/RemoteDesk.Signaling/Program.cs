@@ -29,6 +29,23 @@ builder.Services.AddSingleton(serviceProvider =>
     var options = serviceProvider.GetRequiredService<RemoteDeskServerOptions>();
     return new SessionTokenService(options.SigningKey, serviceProvider.GetRequiredService<TimeProvider>());
 });
+builder.Services.AddSingleton<IOperatorAuthService>(serviceProvider =>
+{
+    var options = serviceProvider.GetRequiredService<RemoteDeskServerOptions>();
+    var timeProvider = serviceProvider.GetRequiredService<TimeProvider>();
+    var oidcOptions = new OidcOperatorOptions
+    {
+        Issuer = options.OidcIssuer,
+        Audience = options.OidcAudience,
+        RequireMfa = options.RequireMfa,
+        SymmetricKey = options.OidcSymmetricKey,
+        RsaPublicKeyPems = options.OidcRsaPublicKeyPems,
+        AllowedRoles = options.AllowedOperatorRoles,
+        AllowLegacyKeyInDevelopment = options.AllowLegacyOperatorKey,
+        LegacyOperatorKey = options.OperatorKey,
+    };
+    return new OperatorAuthService(oidcOptions, timeProvider);
+});
 
 var postgresConn = builder.Configuration.GetConnectionString("Postgres")
     ?? builder.Configuration[$"{RemoteDeskServerOptions.SectionName}:PostgresConnection"];

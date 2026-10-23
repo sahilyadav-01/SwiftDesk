@@ -10,5 +10,14 @@ public sealed class RemoteDeskServerOptions
     public int RequestLifetimeMinutes { get; init; } = 5;
     public int TicketLifetimeMinutes { get; init; } = 10;
     public string? PostgresConnection { get; init; }
+
+    // Enterprise Identity / OIDC Configuration
+    public string? OidcIssuer { get; init; }
+    public string? OidcAudience { get; init; }
+    public bool RequireMfa { get; init; } = true;
+    public string? OidcSymmetricKey { get; init; }
+    public List<string> OidcRsaPublicKeyPems { get; init; } = [];
+    public List<string> AllowedOperatorRoles { get; init; } = ["SupportOperator", "Administrator", "Operator"];
+    public bool AllowLegacyOperatorKey { get; init; } = true;
 }
 
