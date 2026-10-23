@@ -5,5 +5,8 @@
     <ProjectReference Include="../RemoteDesk.Security/RemoteDesk.Security.csproj" />
     <ProjectReference Include="../RemoteDesk.Transport/RemoteDesk.Transport.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Npgsql" />
+  </ItemGroup>
 </Project>
 
