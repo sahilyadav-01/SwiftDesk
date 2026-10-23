@@ -11,16 +11,8 @@
 
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="SwiftDesk">
-        <Component Id="ClientExecutable" Guid="5D6E7F8A-9B0C-1D2E-3F4A-5B6C7D8E9F0A">
-          <File Source="publish/RemoteDesk.Client.exe" KeyPath="yes" />
-        </Component>
-
-        <Component Id="AgentExecutable" Guid="6E7F8A9B-0C1D-2E3F-4A5B-6C7D8E9F0A1B">
-          <File Source="publish/RemoteDesk.Agent.exe" KeyPath="yes" />
-        </Component>
-
         <Component Id="PrivilegedHelperService" Guid="7F8A9B0C-1D2E-3F4A-5B6C-7D8E9F0A1B2C">
-          <File Source="publish/RemoteDesk.PrivilegedHelper.exe" KeyPath="yes" />
+          <File Source="!(bindpath.)RemoteDesk.PrivilegedHelper.exe" KeyPath="yes" />
           <ServiceInstall
               Id="SwiftDeskHelperServiceInstall"
               Name="SwiftDeskPrivilegedHelper"
@@ -40,6 +32,14 @@
       </Directory>
     </StandardDirectory>
 
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+      <Files Include="!(bindpath.)**">
+        <Exclude Files="!(bindpath.)RemoteDesk.PrivilegedHelper.exe" />
+        <Exclude Files="!(bindpath.)*.pdb" />
+        <Exclude Files="!(bindpath.)*.key.sample" />
+      </Files>
+    </ComponentGroup>
+
     <StandardDirectory Id="CommonAppDataFolder">
       <Directory Id="SwiftDeskDataFolder" Name="SwiftDesk">
         <Component Id="MachineSecretDirectory" Guid="8A9B0C1D-2E3F-4A5B-6C7D-8E9F0A1B2C3D">
@@ -52,8 +52,7 @@
     </StandardDirectory>
 
     <Feature Id="MainApplication" Title="SwiftDesk Core" Level="1">
-      <ComponentRef Id="ClientExecutable" />
-      <ComponentRef Id="AgentExecutable" />
+      <ComponentGroupRef Id="ProductComponents" />
       <ComponentRef Id="PrivilegedHelperService" />
       <ComponentRef Id="MachineSecretDirectory" />
     </Feature>

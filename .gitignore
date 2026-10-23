@@ -8,4 +8,6 @@ work/.dotnet/
 *.user
 *.suo
 *.part
-
+packaging/windows/publish/
+*.wixpdb
+*.msi

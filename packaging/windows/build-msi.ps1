@@ -27,14 +27,22 @@ if (-not (Test-Path $DotnetPath)) { $DotnetPath = "dotnet" }
 & $DotnetPath publish (Join-Path $RepoRoot "src\RemoteDesk.PrivilegedHelper\RemoteDesk.PrivilegedHelper.csproj") -c $Configuration -r win-x64 --self-contained false -o $PublishDir
 
 Write-Host "==> Generating machine reboot secret key template..." -ForegroundColor Cyan
-$KeyBytes = [System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32)
+$Rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$KeyBytes = New-Object byte[] 32
+$Rng.GetBytes($KeyBytes)
 $SampleKeyPath = Join-Path $PublishDir "reboot.key.sample"
 [System.IO.File]::WriteAllBytes($SampleKeyPath, $KeyBytes)
 
 Write-Host "==> Compiling WiX MSI installer..." -ForegroundColor Cyan
+$WixFile = Join-Path $PSScriptRoot "SwiftDesk.wxs"
+$MsiDestination = Join-Path $PSScriptRoot $OutputMsi
+
 if (Get-Command "wix" -ErrorAction SilentlyContinue) {
-    & wix build (Join-Path $PSScriptRoot "SwiftDesk.wxs") -o (Join-Path $PSScriptRoot $OutputMsi)
+    & wix build $WixFile -b $PublishDir -o $MsiDestination
     Write-Host "==> Successfully generated MSI: $OutputMsi" -ForegroundColor Green
+} elseif (Test-Path $DotnetPath) {
+    & $DotnetPath tool run wix -- build $WixFile -b $PublishDir -o $MsiDestination
+    Write-Host "==> Successfully generated MSI via dotnet tool wix: $OutputMsi" -ForegroundColor Green
 } else {
-    Write-Host "WiX CLI not found on PATH. Packaged publish directory prepared at: $PublishDir" -ForegroundColor Yellow
+    Write-Host "WiX CLI not found. Packaged publish directory prepared at: $PublishDir" -ForegroundColor Yellow
 }
