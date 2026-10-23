@@ -1,108 +1,163 @@
-# SwiftDesk (RemoteDesk)
+# SwiftDesk
 
-SwiftDesk is a cross-platform C#/.NET remote support application connecting Windows, Linux, and macOS computers with secure screen sharing, remote input control, file transfer, attended access, and remote reboot.
+SwiftDesk is a modern, cross-platform remote support and desktop control application built with C# and .NET 10 LTS. It provides owner-consented remote support across Windows, Linux, and macOS with real-time screen sharing, remote mouse and keyboard control, chunked integrity-checked file transfer, attended access approval, and fine-grained session permissions.
 
-## Current status
+---
 
-| Capability | Status |
-| --- | --- |
-| Device enrollment and authenticated heartbeat | Implemented (in-memory server store) |
-| Attended connection request and approval | Implemented |
-| Separate view/input/file/reboot permissions | Implemented |
-| Short-lived signed controller/agent tickets | Implemented |
-| Paired WebSocket data relay | Implemented |
-| Safe file receive with size, path, offset, and SHA-256 checks | Implemented |
-| Cross-platform Avalonia connection UI & interactive screen viewer | Implemented |
-| Windows desktop capture & SendInput input injection | Implemented |
-| WebRTC ICE/STUN negotiation & low-latency streaming | Implemented (SIPSorcery data channels + relay fallback) |
-| Linux PipeWire/X11 capture/input | Adapter boundary ready |
-| macOS ScreenCaptureKit/input | Adapter boundary ready |
-| Persistent PostgreSQL device/session store | Seam ready (pluggable repository) |
-| Privileged remote reboot service | Adapter boundary ready |
+## Architecture Overview
 
-The capability probe reports native features as unavailable until their real OS adapters are linked. The agent therefore cannot approve permissions it cannot fulfill.
+SwiftDesk separates coordination, transport, platform adapters, and user interface into decoupled projects:
+
+```
+[Avalonia Desktop Client]                      [ASP.NET Core Signaling]                        [Host Agent]
+(RemoteDesk.Client)                                (RemoteDesk.Signaling)                    (RemoteDesk.Agent)
+         |                                                   |                                       |
+         |--- 1. Authenticated Session Request ------------->|                                       |
+         |                                                   |<-- 2. Attended Consent & Approval ----|
+         |<-- 3. Short-Lived Signed Ticket ------------------|--- 3. Short-Lived Signed Ticket ----->|
+         |                                                   |                                       |
+         |=== 4. Paired WebSocket Control & Relay Channel ===|=======================================|
+         |    (SDP Offer / Answer & ICE Candidates Trickle)  |                                       |
+         |                                                   |                                       |
+         |========================= 5. Direct WebRTC P2P Stream =====================================>|
+         |                    (Ultra-low latency data channel / STUN NAT traversal)                  |
+```
+
+---
+
+## Current Status & Capabilities
+
+| Capability | Status | Implementation Details |
+| :--- | :--- | :--- |
+| **Attended Approval & Consent** | **Implemented** | Explicit interactive prompt; device owner approves requested permissions |
+| **Fine-Grained Permissions** | **Implemented** | Independent toggles for `ViewScreen`, `ControlInput`, `TransferFiles`, `RebootDevice` |
+| **Short-Lived Signed Tickets** | **Implemented** | HMAC-SHA-256 session tickets with constant-time verification & short expiry |
+| **Paired WebSocket Relay** | **Implemented** | Low-latency binary/text message relay between paired peers |
+| **WebRTC Media Transport** | **Implemented** | P2P ICE negotiation (`stun.l.google.com:19302`) via `SIPSorcery` with relay fallback |
+| **Windows Desktop Capture** | **Implemented** | High-performance desktop surface capture with real-time JPEG compression |
+| **Windows Remote Input** | **Implemented** | Normalized coordinate translation & input injection via Win32 `SendInput` |
+| **Safe File Transfer** | **Implemented** | Chunked transfer (48 KiB limit), path-traversal protection, and SHA-256 validation |
+| **Avalonia Desktop UI** | **Implemented** | Cross-platform client with real-time viewport, input capture, and file transfer |
+| **Linux Capture / Input** | Adapter Ready | Linux adapter contract ready for PipeWire / X11 implementation |
+| **macOS Capture / Input** | Adapter Ready | macOS adapter contract ready for ScreenCaptureKit implementation |
+| **Database Persistence** | Seam Ready | In-memory registries with pluggable repository seam for PostgreSQL |
+| **Privileged Reboot** | Seam Ready | Authorization boundary ready for dedicated privileged service |
+
+---
+
+## Repository Structure
+
+```text
+SwiftDesk/
+├── src/
+│   ├── RemoteDesk.Client/            # Cross-platform Avalonia UI & screen viewport
+│   ├── RemoteDesk.Agent/             # Host agent with owner consent & execution loop
+│   ├── RemoteDesk.Core/              # Shared models, permission flags, and platform interfaces
+│   ├── RemoteDesk.Protocol/          # Wire contracts, WebRTC messages, and validation
+│   ├── RemoteDesk.Security/          # High-entropy secret generation & HMAC ticket signing
+│   ├── RemoteDesk.Transport/         # WebRTC peer coordinator, WebSocket protocol & file receiver
+│   ├── RemoteDesk.Signaling/         # ASP.NET Core coordination, heartbeat & relay service
+│   ├── RemoteDesk.Platform.Windows/  # Windows desktop capture & SendInput injection
+│   ├── RemoteDesk.Platform.Linux/    # Linux capability adapter boundary
+│   └── RemoteDesk.Platform.MacOS/    # macOS capability adapter boundary
+├── tests/
+│   ├── RemoteDesk.Core.Tests/        # Permission demand and authorization tests
+│   ├── RemoteDesk.Protocol.Tests/    # Contract validation & WebRTC message tests
+│   └── RemoteDesk.Security.Tests/    # Ticket issuance & tamper-resistance tests
+├── docs/                             # Architecture, protocol, and security specifications
+└── RemoteDesk.slnx                   # Solution file
+```
+
+---
 
 ## Prerequisites
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
-- Windows, Linux, or macOS for the client/agent
+- [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) (or the workspace's local runtime `work/.dotnet/dotnet.exe`)
+- Windows, Linux, or macOS
 
-## Build and test
+---
+
+## Build and Test
+
+Using the installed .NET CLI or workspace runner:
 
 ```powershell
+# Restore dependencies
 dotnet restore RemoteDesk.slnx
+
+# Build the solution
 dotnet build RemoteDesk.slnx --no-restore
+
+# Run the test suite
 dotnet test --solution RemoteDesk.slnx --no-build --no-restore
 ```
 
-## Local end-to-end file transfer
+*(If using the workspace runtime on Windows, prefix with `.\work\.dotnet\dotnet.exe`)*
 
-1. Start the signaling server:
+---
 
-   ```powershell
-   dotnet run --project src/RemoteDesk.Signaling
-   ```
+## Quickstart: Running SwiftDesk Locally
 
-2. Enroll and start an agent. Choose the receive directory explicitly:
+### 1. Start the Signaling Server
 
-   ```powershell
-   dotnet run --project src/RemoteDesk.Agent -- `
-     --bootstrap-token local-bootstrap-change-me `
-     --download-directory C:\Temp\RemoteDeskDownloads
-   ```
+```powershell
+dotnet run --project src/RemoteDesk.Signaling
+```
+The server will start listening on `http://localhost:5080`.
 
-   The agent prints a device ID and secret once. Put them in an OS-protected secret store for later runs. Do not commit them.
+### 2. Enroll and Start the Agent (Host Machine)
 
-3. Start the desktop client:
+Open a terminal on the host machine and run:
 
-   ```powershell
-   dotnet run --project src/RemoteDesk.Client
-   ```
-
-4. Enter the printed device ID, select only **Transfer files**, and request a connection. Approve the request in the agent console, enter an absolute source-file path in the client, and send it.
-
-The development operator key is `local-operator-change-me`. All local defaults are refused when the signaling server runs outside the Development environment.
-
-## Production configuration
-
-Set these through a secret manager or environment variables:
-
-```text
-RemoteDesk__BootstrapToken=<high-entropy enrollment token>
-RemoteDesk__OperatorKey=<replace with real administrator authentication>
-RemoteDesk__SigningKey=<at least 32 random bytes, represented as a secret string>
-RemoteDesk__RequestLifetimeMinutes=5
-RemoteDesk__TicketLifetimeMinutes=10
+```powershell
+dotnet run --project src/RemoteDesk.Agent -- `
+  --bootstrap-token local-bootstrap-change-me `
+  --download-directory C:\Temp\SwiftDeskDownloads
 ```
 
-The single operator key is deliberately a development seam, not a production identity system. Before internet deployment, replace it with an OIDC provider, MFA, named operators, revocation, audit storage, rate limiting, TLS termination, and a persistent database.
-
-## Repository layout
-
+The agent will enroll and output its credentials:
 ```text
-src/
-  RemoteDesk.Client/            Avalonia desktop connection UI
-  RemoteDesk.Agent/             owner-visible host agent
-  RemoteDesk.Core/              permissions, sessions, platform interfaces
-  RemoteDesk.Protocol/          API and control-message contracts
-  RemoteDesk.Security/          secrets and signed session tickets
-  RemoteDesk.Transport/         API/WebSocket helpers and safe file receiver
-  RemoteDesk.Signaling/         ASP.NET Core coordination and relay service
-  RemoteDesk.Platform.Windows/  Windows capability boundary
-  RemoteDesk.Platform.Linux/    Linux capability boundary
-  RemoteDesk.Platform.MacOS/    macOS capability boundary
-tests/                          xUnit unit tests
-docs/                           architecture and security notes
+Enrollment succeeded. Store these values in an OS-protected secret store:
+REMOTEDESK_DEVICE_ID=dev_...
+REMOTEDESK_DEVICE_SECRET=...
+RemoteDesk agent dev_... on Windows
+Available permissions: ViewScreen, ControlInput, TransferFiles
 ```
 
-See [architecture.md](docs/architecture.md), [protocol.md](docs/protocol.md), and [security.md](docs/security.md) before extending the native adapters.
+### 3. Start the Desktop Client (Viewer Machine)
 
-## Recommended next milestones
+In another terminal, launch the Avalonia UI:
 
-1. Add PostgreSQL persistence plus OIDC/MFA and immutable audit events.
-2. Implement Windows capture using Windows Graphics Capture or Desktop Duplication in the Windows adapter.
-3. Add a video encoder and WebRTC transport; keep control/file messages on separately authorized data channels.
-4. Add input only after view-only sessions are stable, with explicit local consent and locked-screen/integrity tests.
-5. Add PipeWire portal and ScreenCaptureKit adapters, preserving their native permission prompts.
-6. Implement reboot as a separately installed, signed, least-privilege service with confirmation and reconnect auditing.
+```powershell
+dotnet run --project src/RemoteDesk.Client
+```
 
+### 4. Connect and Control
+
+1. Paste the `REMOTEDESK_DEVICE_ID` into the **Target device ID** field.
+2. Select your desired permissions:
+   - **View screen**: Streams the remote desktop.
+   - **Control input**: Enables mouse clicks, movements, scroll, and keyboard events.
+   - **Transfer files**: Allows sending files to the approved destination directory.
+3. Click **Request connection**.
+4. In the Agent console, confirm the attended access prompt (`y`).
+5. The live remote desktop stream will appear in the client viewport with full interactive control!
+
+---
+
+## Security Invariants
+
+- **Consent-First**: The host agent requires explicit owner approval for every session.
+- **Least-Privilege Authorization**: Permissions are independently negotiated. The agent rejects ungranted actions even if signaled.
+- **Short-Lived Signed Tickets**: Session tickets expire within minutes and are cryptographically verified using HMAC-SHA-256.
+- **Path Traversal & Digest Verification**: Transferred files are checked against path traversal, size limits, and SHA-256 checksums before moving to final destinations.
+- **No Covert Installation**: SwiftDesk does not silently install, bypass OS boundaries, or execute arbitrary shell commands.
+
+---
+
+## Next Roadmap Milestones
+
+1. **Linux Native Adapter**: Implement PipeWire / Wayland screencopy and X11 capture adapters.
+2. **macOS Native Adapter**: Implement ScreenCaptureKit streaming with macOS accessibility permissions.
+3. **Persistent Storage**: Transition signaling device and session registries from in-memory to PostgreSQL.
+4. **Production Identity**: Integrate OIDC / MFA provider for enterprise operator authentication.
