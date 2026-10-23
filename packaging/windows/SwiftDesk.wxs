@@ -19,6 +19,7 @@
               DisplayName="SwiftDesk Privileged Remote Reboot Helper"
               Description="Least-privilege helper service executing authenticated, signed, and rate-limited remote reboots for SwiftDesk."
               Type="ownProcess"
+              Account="LocalSystem"
               Start="auto"
               ErrorControl="normal" />
           <ServiceControl
@@ -42,11 +43,12 @@
 
     <StandardDirectory Id="CommonAppDataFolder">
       <Directory Id="SwiftDeskDataFolder" Name="SwiftDesk">
-        <Component Id="MachineSecretDirectory" Guid="8A9B0C1D-2E3F-4A5B-6C7D-8E9F0A1B2C3D">
+        <Component Id="MachineSecretDirectory" Guid="8A9B0C1D-2E3F-4A5B-6C7D-8E9F0A1B2C3D" NeverOverwrite="yes">
           <CreateFolder>
             <Permission User="NT AUTHORITY\SYSTEM" GenericAll="yes" />
             <Permission User="Administrators" GenericAll="yes" />
           </CreateFolder>
+          <File Id="RebootKeyFile" Source="!(bindpath.)reboot.key.sample" Name="reboot.key" KeyPath="yes" />
         </Component>
       </Directory>
     </StandardDirectory>

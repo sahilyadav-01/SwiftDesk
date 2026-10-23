@@ -22,9 +22,9 @@ New-Item -ItemType Directory -Path $PublishDir -Force | Out-Null
 $DotnetPath = Join-Path $RepoRoot "work\.dotnet\dotnet.exe"
 if (-not (Test-Path $DotnetPath)) { $DotnetPath = "dotnet" }
 
-& $DotnetPath publish (Join-Path $RepoRoot "src\RemoteDesk.Client\RemoteDesk.Client.csproj") -c $Configuration -r win-x64 --self-contained false -o $PublishDir
-& $DotnetPath publish (Join-Path $RepoRoot "src\RemoteDesk.Agent\RemoteDesk.Agent.csproj") -c $Configuration -r win-x64 --self-contained false -o $PublishDir
-& $DotnetPath publish (Join-Path $RepoRoot "src\RemoteDesk.PrivilegedHelper\RemoteDesk.PrivilegedHelper.csproj") -c $Configuration -r win-x64 --self-contained false -o $PublishDir
+& $DotnetPath publish (Join-Path $RepoRoot "src\RemoteDesk.Client\RemoteDesk.Client.csproj") -c $Configuration -r win-x64 --self-contained true -o $PublishDir
+& $DotnetPath publish (Join-Path $RepoRoot "src\RemoteDesk.Agent\RemoteDesk.Agent.csproj") -c $Configuration -r win-x64 --self-contained true -o $PublishDir
+& $DotnetPath publish (Join-Path $RepoRoot "src\RemoteDesk.PrivilegedHelper\RemoteDesk.PrivilegedHelper.csproj") -c $Configuration -r win-x64 --self-contained true -o $PublishDir
 
 Write-Host "==> Generating machine reboot secret key template..." -ForegroundColor Cyan
 $Rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
@@ -39,10 +39,13 @@ $MsiDestination = Join-Path $PSScriptRoot $OutputMsi
 
 if (Get-Command "wix" -ErrorAction SilentlyContinue) {
     & wix build $WixFile -b $PublishDir -o $MsiDestination
-    Write-Host "==> Successfully generated MSI: $OutputMsi" -ForegroundColor Green
 } elseif (Test-Path $DotnetPath) {
-    & $DotnetPath tool run wix -- build $WixFile -b $PublishDir -o $MsiDestination
-    Write-Host "==> Successfully generated MSI via dotnet tool wix: $OutputMsi" -ForegroundColor Green
+    & $DotnetPath tool run wix build $WixFile -b $PublishDir -o $MsiDestination
 } else {
-    Write-Host "WiX CLI not found. Packaged publish directory prepared at: $PublishDir" -ForegroundColor Yellow
+    throw "WiX CLI not found. Packaged publish directory prepared at: $PublishDir"
 }
+
+if ($LASTEXITCODE -ne 0) {
+    throw "WiX build failed with exit code $LASTEXITCODE"
+}
+Write-Host "==> Successfully generated MSI: $OutputMsi" -ForegroundColor Green
