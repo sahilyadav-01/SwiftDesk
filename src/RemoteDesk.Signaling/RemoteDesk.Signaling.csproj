@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="../RemoteDesk.Core/RemoteDesk.Core.csproj" />
+    <ProjectReference Include="../RemoteDesk.Protocol/RemoteDesk.Protocol.csproj" />
+    <ProjectReference Include="../RemoteDesk.Security/RemoteDesk.Security.csproj" />
+    <ProjectReference Include="../RemoteDesk.Transport/RemoteDesk.Transport.csproj" />
+  </ItemGroup>
+</Project>
+

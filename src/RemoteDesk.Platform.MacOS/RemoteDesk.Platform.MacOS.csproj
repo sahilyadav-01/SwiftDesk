@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../RemoteDesk.Core/RemoteDesk.Core.csproj" />
+  </ItemGroup>
+</Project>
+

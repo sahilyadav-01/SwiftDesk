@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <ProjectReference Include="../RemoteDesk.Core/RemoteDesk.Core.csproj" />
+    <ProjectReference Include="../RemoteDesk.Protocol/RemoteDesk.Protocol.csproj" />
+    <ProjectReference Include="../RemoteDesk.Transport/RemoteDesk.Transport.csproj" />
+  </ItemGroup>
+</Project>
+

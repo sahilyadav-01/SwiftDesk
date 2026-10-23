@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../RemoteDesk.Core/RemoteDesk.Core.csproj" />
+    <ProjectReference Include="../RemoteDesk.Protocol/RemoteDesk.Protocol.csproj" />
+    <ProjectReference Include="../RemoteDesk.Transport/RemoteDesk.Transport.csproj" />
+    <ProjectReference Include="../RemoteDesk.Platform.Windows/RemoteDesk.Platform.Windows.csproj" />
+    <ProjectReference Include="../RemoteDesk.Platform.Linux/RemoteDesk.Platform.Linux.csproj" />
+    <ProjectReference Include="../RemoteDesk.Platform.MacOS/RemoteDesk.Platform.MacOS.csproj" />
+  </ItemGroup>
+</Project>
+
