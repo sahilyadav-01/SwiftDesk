@@ -8,4 +8,28 @@ services:
       RemoteDesk__BootstrapToken: "${REMOTEDESK_BOOTSTRAP_TOKEN:?set REMOTEDESK_BOOTSTRAP_TOKEN}"
       RemoteDesk__OperatorKey: "${REMOTEDESK_OPERATOR_KEY:?set REMOTEDESK_OPERATOR_KEY}"
       RemoteDesk__SigningKey: "${REMOTEDESK_SIGNING_KEY:?set REMOTEDESK_SIGNING_KEY}"
+      RemoteDesk__PostgresConnection: "Host=db;Port=5432;Database=swiftdesk;Username=swiftdesk;Password=swiftdesk_secure_pass"
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: swiftdesk
+      POSTGRES_USER: swiftdesk
+      POSTGRES_PASSWORD: swiftdesk_secure_pass
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U swiftdesk"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  pgdata:

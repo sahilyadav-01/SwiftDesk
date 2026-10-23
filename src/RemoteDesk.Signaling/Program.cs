@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Npgsql;
 using RemoteDesk.Core;
 using RemoteDesk.Protocol;
 using RemoteDesk.Security;
@@ -27,12 +29,37 @@ builder.Services.AddSingleton(serviceProvider =>
     var options = serviceProvider.GetRequiredService<RemoteDeskServerOptions>();
     return new SessionTokenService(options.SigningKey, serviceProvider.GetRequiredService<TimeProvider>());
 });
-builder.Services.AddSingleton<DeviceRegistry>();
-builder.Services.AddSingleton<SessionRegistry>();
+
+var postgresConn = builder.Configuration.GetConnectionString("Postgres")
+    ?? builder.Configuration[$"{RemoteDeskServerOptions.SectionName}:PostgresConnection"];
+
+if (!string.IsNullOrWhiteSpace(postgresConn))
+{
+    var dataSource = NpgsqlDataSource.Create(postgresConn);
+    builder.Services.AddSingleton(dataSource);
+    builder.Services.AddSingleton<IDeviceStore, PostgresDeviceStore>();
+    builder.Services.AddSingleton<ISessionStore, PostgresSessionStore>();
+    builder.Services.AddSingleton<IAuditStore, PostgresAuditStore>();
+}
+else
+{
+    builder.Services.AddSingleton<DeviceRegistry>();
+    builder.Services.AddSingleton<IDeviceStore>(sp => sp.GetRequiredService<DeviceRegistry>());
+    builder.Services.AddSingleton<SessionRegistry>();
+    builder.Services.AddSingleton<ISessionStore>(sp => sp.GetRequiredService<SessionRegistry>());
+    builder.Services.AddSingleton<IAuditStore, InMemoryAuditStore>();
+}
+
 builder.Services.AddSingleton<SessionRelayHub>();
 
 var app = builder.Build();
 var serverOptions = app.Services.GetRequiredService<RemoteDeskServerOptions>();
+
+if (!string.IsNullOrWhiteSpace(postgresConn))
+{
+    var ds = app.Services.GetRequiredService<NpgsqlDataSource>();
+    await PostgresSchemaInitializer.InitializeAsync(ds);
+}
 
 if (!app.Environment.IsDevelopment()
     && (serverOptions.BootstrapToken.StartsWith("local-", StringComparison.Ordinal)
@@ -50,10 +77,11 @@ app.UseWebSockets(new WebSocketOptions
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
-app.MapPost("/api/devices/enroll", (
+app.MapPost("/api/devices/enroll", async (
     HttpContext context,
     DeviceEnrollmentRequest request,
-    DeviceRegistry devices) =>
+    IDeviceStore devices,
+    IAuditStore audit) =>
 {
     if (!MatchesSecret(context.Request.Headers["X-Bootstrap-Token"], serverOptions.BootstrapToken))
     {
@@ -64,7 +92,8 @@ app.MapPost("/api/devices/enroll", (
     {
         ProtocolValidation.RequireText(request.Name, ProtocolValidation.MaxDeviceNameLength, nameof(request.Name));
         ProtocolValidation.RequireText(request.Platform, 80, nameof(request.Platform));
-        var enrolled = devices.Enroll(request.Name.Trim(), request.Platform.Trim());
+        var enrolled = await devices.EnrollAsync(request.Name.Trim(), request.Platform.Trim(), context.RequestAborted);
+        await audit.RecordEventAsync("DeviceEnrolled", enrolled.DeviceId, null, null, request.Name.Trim(), context.RequestAborted);
         return Results.Ok(new DeviceEnrollmentResponse(enrolled.DeviceId, enrolled.DeviceSecret));
     }
     catch (ArgumentException exception)
@@ -73,13 +102,13 @@ app.MapPost("/api/devices/enroll", (
     }
 });
 
-app.MapPost("/api/devices/{deviceId}/heartbeat", (
+app.MapPost("/api/devices/{deviceId}/heartbeat", async (
     HttpContext context,
     string deviceId,
     HeartbeatRequest request,
-    DeviceRegistry devices) =>
+    IDeviceStore devices) =>
 {
-    if (!devices.Authenticate(deviceId, context.Request.Headers["X-Device-Secret"]))
+    if (!await devices.AuthenticateAsync(deviceId, context.Request.Headers["X-Device-Secret"], context.RequestAborted))
     {
         return Results.Unauthorized();
     }
@@ -89,40 +118,45 @@ app.MapPost("/api/devices/{deviceId}/heartbeat", (
         return Results.BadRequest(new ErrorResponse("invalid_request", "Agent version is invalid."));
     }
 
-    devices.UpdateHeartbeat(deviceId, request.AgentVersion, request.Capabilities);
+    await devices.UpdateHeartbeatAsync(deviceId, request.AgentVersion, request.Capabilities, context.RequestAborted);
     return Results.NoContent();
 });
 
-app.MapGet("/api/devices/{deviceId}/requests", (
+app.MapGet("/api/devices/{deviceId}/requests", async (
     HttpContext context,
     string deviceId,
-    DeviceRegistry devices,
-    SessionRegistry sessions) =>
+    IDeviceStore devices,
+    ISessionStore sessions) =>
 {
-    if (!devices.Authenticate(deviceId, context.Request.Headers["X-Device-Secret"]))
+    if (!await devices.AuthenticateAsync(deviceId, context.Request.Headers["X-Device-Secret"], context.RequestAborted))
     {
         return Results.Unauthorized();
     }
 
-    return Results.Ok(sessions.GetPendingForDevice(deviceId));
+    var pending = await sessions.GetPendingForDeviceAsync(deviceId, context.RequestAborted);
+    return Results.Ok(pending);
 });
 
-app.MapPost("/api/devices/{deviceId}/requests/{sessionId}", (
+app.MapPost("/api/devices/{deviceId}/requests/{sessionId}", async (
     HttpContext context,
     string deviceId,
     string sessionId,
     ApproveSessionRequest request,
-    DeviceRegistry devices,
-    SessionRegistry sessions) =>
+    IDeviceStore devices,
+    ISessionStore sessions,
+    IAuditStore audit) =>
 {
-    if (!devices.Authenticate(deviceId, context.Request.Headers["X-Device-Secret"]))
+    if (!await devices.AuthenticateAsync(deviceId, context.Request.Headers["X-Device-Secret"], context.RequestAborted))
     {
         return Results.Unauthorized();
     }
 
     try
     {
-        return Results.Ok(sessions.Decide(deviceId, sessionId, request));
+        var decision = await sessions.DecideAsync(deviceId, sessionId, request, context.RequestAborted);
+        var eventType = request.Approved ? "SessionApproved" : "SessionDeclined";
+        await audit.RecordEventAsync(eventType, deviceId, sessionId, null, $"Permissions: {request.GrantedPermissions}", context.RequestAborted);
+        return Results.Ok(decision);
     }
     catch (KeyNotFoundException exception)
     {
@@ -138,10 +172,11 @@ app.MapPost("/api/devices/{deviceId}/requests/{sessionId}", (
     }
 });
 
-app.MapPost("/api/sessions", (
+app.MapPost("/api/sessions", async (
     HttpContext context,
     CreateSessionRequest request,
-    SessionRegistry sessions) =>
+    ISessionStore sessions,
+    IAuditStore audit) =>
 {
     if (!MatchesSecret(context.Request.Headers["X-Operator-Key"], serverOptions.OperatorKey))
     {
@@ -150,7 +185,8 @@ app.MapPost("/api/sessions", (
 
     try
     {
-        var session = sessions.Create(request);
+        var session = await sessions.CreateAsync(request, context.RequestAborted);
+        await audit.RecordEventAsync("SessionCreated", request.DeviceId, session.SessionId, request.OperatorName, $"Requested: {request.RequestedPermissions}", context.RequestAborted);
         return Results.Ok(new CreateSessionResponse(session.SessionId, session.State, session.ExpiresAt));
     }
     catch (KeyNotFoundException exception)
@@ -163,10 +199,10 @@ app.MapPost("/api/sessions", (
     }
 });
 
-app.MapGet("/api/sessions/{sessionId}", (
+app.MapGet("/api/sessions/{sessionId}", async (
     HttpContext context,
     string sessionId,
-    SessionRegistry sessions) =>
+    ISessionStore sessions) =>
 {
     if (!MatchesSecret(context.Request.Headers["X-Operator-Key"], serverOptions.OperatorKey))
     {
@@ -175,7 +211,8 @@ app.MapGet("/api/sessions/{sessionId}", (
 
     try
     {
-        return Results.Ok(sessions.GetStatus(sessionId));
+        var status = await sessions.GetStatusAsync(sessionId, context.RequestAborted);
+        return Results.Ok(status);
     }
     catch (KeyNotFoundException exception)
     {
@@ -183,11 +220,29 @@ app.MapGet("/api/sessions/{sessionId}", (
     }
 });
 
+app.MapGet("/api/audit", async (
+    HttpContext context,
+    IAuditStore audit,
+    [FromQuery] string? deviceId,
+    [FromQuery] string? sessionId,
+    [FromQuery] int limit = 50) =>
+{
+    if (!MatchesSecret(context.Request.Headers["X-Operator-Key"], serverOptions.OperatorKey))
+    {
+        return Results.Unauthorized();
+    }
+
+    var events = await audit.GetEventsAsync(deviceId, sessionId, limit, context.RequestAborted);
+    return Results.Ok(events);
+});
+
 app.Map("/ws/sessions/{sessionId}", async (
     HttpContext context,
     string sessionId,
-    SessionRegistry sessions,
-    SessionRelayHub relay) =>
+    ISessionStore sessions,
+    SessionTokenService tokenService,
+    SessionRelayHub relay,
+    IAuditStore audit) =>
 {
     if (!context.WebSockets.IsWebSocketRequest)
     {
@@ -199,7 +254,8 @@ app.Map("/ws/sessions/{sessionId}", async (
     var ticket = authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
         ? authorization["Bearer ".Length..].Trim()
         : string.Empty;
-    var validation = sessions.ValidateTicket(sessionId, ticket);
+
+    var validation = tokenService.Validate(ticket, null, sessionId);
     if (!validation.IsValid || validation.Claims is null)
     {
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -209,7 +265,8 @@ app.Map("/ws/sessions/{sessionId}", async (
     using var socket = await context.WebSockets.AcceptWebSocketAsync();
     try
     {
-        sessions.MarkActive(sessionId);
+        await sessions.SetStateAsync(sessionId, SessionState.Active, context.RequestAborted);
+        await audit.RecordEventAsync("SessionConnected", validation.Claims.DeviceId, sessionId, null, $"Role: {validation.Claims.Role}");
         await relay.JoinAsync(sessionId, validation.Claims.Role, socket, context.RequestAborted);
     }
     catch (InvalidOperationException)
@@ -218,7 +275,8 @@ app.Map("/ws/sessions/{sessionId}", async (
     }
     finally
     {
-        sessions.MarkDisconnected(sessionId);
+        await sessions.SetStateAsync(sessionId, SessionState.Disconnected);
+        await audit.RecordEventAsync("SessionDisconnected", validation.Claims.DeviceId, sessionId, null, $"Role: {validation.Claims.Role}");
     }
 });
 

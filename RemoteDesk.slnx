@@ -15,6 +15,7 @@
     <Project Path="tests/RemoteDesk.Core.Tests/RemoteDesk.Core.Tests.csproj" />
     <Project Path="tests/RemoteDesk.Protocol.Tests/RemoteDesk.Protocol.Tests.csproj" />
     <Project Path="tests/RemoteDesk.Security.Tests/RemoteDesk.Security.Tests.csproj" />
+    <Project Path="tests/RemoteDesk.Signaling.Tests/RemoteDesk.Signaling.Tests.csproj" />
   </Folder>
 </Solution>
 

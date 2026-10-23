@@ -379,14 +379,14 @@ public sealed class PostgresSessionStore(
         }
 
         var ticketLifetime = TimeSpan.FromMinutes(_options.TicketLifetimeMinutes);
-        var controllerTicket = _tokenService.IssueTicket(
+        var controllerTicket = _tokenService.Issue(
             sessionId,
             deviceId,
             SessionRole.Controller,
             decision.GrantedPermissions,
             ticketLifetime);
 
-        var agentTicket = _tokenService.IssueTicket(
+        var agentTicket = _tokenService.Issue(
             sessionId,
             deviceId,
             SessionRole.Agent,
@@ -416,8 +416,8 @@ public sealed class PostgresSessionStore(
 
         return new ApproveSessionResponse(
             SessionState.Approved,
-            decision.GrantedPermissions,
-            agentTicket);
+            agentTicket,
+            ticketExpiresAt);
     }
 
     public async Task<SessionStatusResponse> GetStatusAsync(string sessionId, CancellationToken cancellationToken = default)
@@ -458,7 +458,8 @@ public sealed class PostgresSessionStore(
             reader.GetString(0),
             state,
             (SessionPermission)reader.GetInt32(4),
-            reader.IsDBNull(6) ? null : reader.GetString(6));
+            reader.IsDBNull(6) ? null : reader.GetString(6),
+            expiresAt);
     }
 
     public async Task<bool> SetStateAsync(string sessionId, SessionState state, CancellationToken cancellationToken = default)
