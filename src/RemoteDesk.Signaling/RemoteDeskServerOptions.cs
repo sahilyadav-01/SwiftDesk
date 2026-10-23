@@ -9,5 +9,6 @@ public sealed class RemoteDeskServerOptions
     public string SigningKey { get; init; } = string.Empty;
     public int RequestLifetimeMinutes { get; init; } = 5;
     public int TicketLifetimeMinutes { get; init; } = 10;
+    public string? PostgresConnection { get; init; }
 }
 
