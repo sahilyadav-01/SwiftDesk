@@ -39,7 +39,7 @@ SwiftDesk separates coordination, transport, platform adapters, and user interfa
 | **Safe File Transfer** | **Implemented** | Chunked transfer (48 KiB limit), path-traversal protection, and SHA-256 validation |
 | **Avalonia Desktop UI** | **Implemented** | Cross-platform client with real-time viewport, input capture, and file transfer |
 | **Linux Capture / Input** | **Implemented** | X11 surface capture via `libX11` `XGetImage` & synthetic input via `libXtst` XTest |
-| **macOS Capture / Input** | Adapter Ready | macOS adapter contract ready for ScreenCaptureKit implementation |
+| **macOS Capture / Input** | **Implemented** | CoreGraphics desktop capture & Quartz Event Services input injection |
 | **Database Persistence** | **Implemented** | Dual-mode: Production PostgreSQL (`Npgsql`) with connection pooling or in-memory for dev |
 | **Audit Logging** | **Implemented** | Immutable audit trail for device enrollment, approvals, and connections (`/api/audit`) |
 | **Privileged Reboot** | Seam Ready | Authorization boundary ready for dedicated privileged service |
@@ -158,6 +158,5 @@ dotnet run --project src/RemoteDesk.Client
 
 ## Next Roadmap Milestones
 
-1. **macOS Native Adapter**: Implement ScreenCaptureKit streaming with macOS accessibility permissions.
-2. **Production Identity**: Integrate OIDC / MFA provider for enterprise operator authentication.
-3. **Privileged Remote Reboot**: Implement separately installed, signed, least-privilege reboot service.
+1. **Production Identity**: Integrate OIDC / MFA provider for enterprise operator authentication.
+2. **Privileged Remote Reboot**: Implement separately installed, signed, least-privilege reboot service.

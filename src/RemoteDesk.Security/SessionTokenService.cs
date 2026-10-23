@@ -97,7 +97,9 @@ public sealed class SessionTokenService
         {
             var suppliedSignature = Base64Url.Decode(parts[1]);
             var expectedSignature = HMACSHA256.HashData(_signingKey, Encoding.ASCII.GetBytes(parts[0]));
-            if (!CryptographicOperations.FixedTimeEquals(suppliedSignature, expectedSignature))
+            var canonicalSignature = Base64Url.Encode(expectedSignature);
+            if (!CryptographicOperations.FixedTimeEquals(suppliedSignature, expectedSignature)
+                || !CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(parts[1]), Encoding.ASCII.GetBytes(canonicalSignature)))
             {
                 return TokenValidationResult.Failure("Ticket signature is invalid.");
             }
