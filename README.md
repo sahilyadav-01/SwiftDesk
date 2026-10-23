@@ -38,9 +38,10 @@ SwiftDesk separates coordination, transport, platform adapters, and user interfa
 | **Windows Remote Input** | **Implemented** | Normalized coordinate translation & input injection via Win32 `SendInput` |
 | **Safe File Transfer** | **Implemented** | Chunked transfer (48 KiB limit), path-traversal protection, and SHA-256 validation |
 | **Avalonia Desktop UI** | **Implemented** | Cross-platform client with real-time viewport, input capture, and file transfer |
-| **Linux Capture / Input** | Adapter Ready | Linux adapter contract ready for PipeWire / X11 implementation |
+| **Linux Capture / Input** | **Implemented** | X11 surface capture via `libX11` `XGetImage` & synthetic input via `libXtst` XTest |
 | **macOS Capture / Input** | Adapter Ready | macOS adapter contract ready for ScreenCaptureKit implementation |
-| **Database Persistence** | Seam Ready | In-memory registries with pluggable repository seam for PostgreSQL |
+| **Database Persistence** | **Implemented** | Dual-mode: Production PostgreSQL (`Npgsql`) with connection pooling or in-memory for dev |
+| **Audit Logging** | **Implemented** | Immutable audit trail for device enrollment, approvals, and connections (`/api/audit`) |
 | **Privileged Reboot** | Seam Ready | Authorization boundary ready for dedicated privileged service |
 
 ---
@@ -157,7 +158,6 @@ dotnet run --project src/RemoteDesk.Client
 
 ## Next Roadmap Milestones
 
-1. **Linux Native Adapter**: Implement PipeWire / Wayland screencopy and X11 capture adapters.
-2. **macOS Native Adapter**: Implement ScreenCaptureKit streaming with macOS accessibility permissions.
-3. **Persistent Storage**: Transition signaling device and session registries from in-memory to PostgreSQL.
-4. **Production Identity**: Integrate OIDC / MFA provider for enterprise operator authentication.
+1. **macOS Native Adapter**: Implement ScreenCaptureKit streaming with macOS accessibility permissions.
+2. **Production Identity**: Integrate OIDC / MFA provider for enterprise operator authentication.
+3. **Privileged Remote Reboot**: Implement separately installed, signed, least-privilege reboot service.
