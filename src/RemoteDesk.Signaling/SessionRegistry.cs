@@ -226,4 +226,30 @@ public sealed class SessionRegistry(
             session.AgentTicket = null;
         }
     }
+
+    public Task<SessionSnapshot> CreateAsync(CreateSessionRequest request, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Create(request));
+
+    public Task<IReadOnlyList<PendingSessionRequest>> GetPendingForDeviceAsync(string deviceId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(GetPendingForDevice(deviceId));
+
+    public Task<ApproveSessionResponse> DecideAsync(string deviceId, string sessionId, ApproveSessionRequest decision, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Decide(deviceId, sessionId, decision));
+
+    public Task<SessionStatusResponse> GetStatusAsync(string sessionId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(GetStatus(sessionId));
+
+    public Task<bool> SetStateAsync(string sessionId, SessionState state, CancellationToken cancellationToken = default)
+    {
+        if (!_sessions.TryGetValue(sessionId, out var session))
+        {
+            return Task.FromResult(false);
+        }
+
+        lock (session.SyncRoot)
+        {
+            session.Snapshot = session.Snapshot with { State = state };
+            return Task.FromResult(true);
+        }
+    }
 }
