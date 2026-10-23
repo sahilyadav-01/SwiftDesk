@@ -1,0 +1,958 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>SIPSorceryMedia.Abstractions</name>
+    </assembly>
+    <members>
+        <member name="P:SIPSorceryMedia.Abstractions.IAudioEncoder.SupportedFormats">
+            <summary>
+            Needs to be set with the list of audio formats that the encoder supports.
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.IAudioEncoder.EncodeAudio(System.Int16[],SIPSorceryMedia.Abstractions.AudioFormat)">
+            <summary>
+            Encodes 16bit signed PCM samples.
+            </summary>
+            <param name="pcm">An array of 16 bit signed audio samples.</param>
+            <param name="format">The audio format to encode the PCM sample to.</param>
+            <returns>A byte array containing the encoded sample.</returns>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.IAudioEncoder.DecodeAudio(System.Byte[],SIPSorceryMedia.Abstractions.AudioFormat)">
+            <summary>
+            Decodes to 16bit signed PCM samples.
+            </summary>
+            <param name="encodedSample">The byte array containing the encoded sample.</param>
+            <param name="format">The audio format of the encoded sample.</param>
+            <returns>An array containing the 16 bit signed PCM samples.</returns>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.ITextEncoder.EncodeText(System.Char[],SIPSorceryMedia.Abstractions.TextFormat)">
+            <summary>
+            Encode a text into a byte array.
+            </summary>
+            <param name="text">A symbol or text to be transmitted</param>
+            <param name="format">The text format of the sample.</param>
+            <returns>A byte array containing the encoded text sample</returns>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.ITextEncoder.DecodeText(System.Byte[],SIPSorceryMedia.Abstractions.TextFormat)">
+            <summary>
+            Decode a byte array into a string type text.
+            </summary>
+            <param name="encodedSample">A symbol or text that was received</param>
+            <param name="format">The text format of the sample.</param>
+            <returns></returns>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.IVideoEncoder.SupportedFormats">
+            <summary>
+            Needs to be set with the list of video formats that the encoder supports.
+            </summary>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.RawImage.Width">
+            <summary>
+            The width, in pixels, of the image
+            </summary>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.RawImage.Height">
+            <summary>
+            The height, in pixels, of the image
+            </summary>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.RawImage.Stride">
+            <summary>
+            Integer that specifies the byte offset between the beginning of one scan line and the next.
+            </summary>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.RawImage.Sample">
+            <summary>
+            Pointer to an array of bytes that contains the pixel data.
+            </summary>
+            <remarks>
+            WARNING: When supplied by a decoder or capture source this points at memory owned by that component
+            and re-used for every frame, so it is only valid for the duration of the event handler it
+            was delivered to. If the sample is needed after the handler returns, for example to display
+            it on a UI thread, copy it first with <see cref="M:SIPSorceryMedia.Abstractions.RawImage.GetBuffer"/> or <see cref="M:SIPSorceryMedia.Abstractions.RawImage.CopyTo(System.Byte[])"/>.
+            Note that <see cref="M:SIPSorceryMedia.Abstractions.RawImage.CopyTo(System.IntPtr,System.Int32)"/> does not help there. It avoids the managed array
+            but still has to run inside the handler.
+            </remarks>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.RawImage.PixelFormat">
+            <summary>
+            The pixel format of the image
+            </summary>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.RawImage.BufferSize">
+            <summary>
+            The number of bytes needed to hold a copy of the pixel data, or 0 if this image has no
+            usable dimensions.
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.RawImage.GetBuffer">
+            <summary>
+            Copies the pixel data into a new managed array.
+            </summary>
+            <returns>The copied pixel data, or null if this image has no usable dimensions.</returns>
+            <remarks>
+            <para>
+            This is the safe way to consume a decoded frame. <see cref="P:SIPSorceryMedia.Abstractions.RawImage.Sample"/> points at memory owned
+            by the decoder and is only valid for the duration of the callback, so a handler that does
+            anything after it returns, such as marshalling to a UI thread, must take a copy first. The
+            returned array has no such restriction and can be held for as long as needed.
+            </para>
+            <para>
+            The copy costs a fraction of a millisecond even at high resolutions, but allocates a new
+            array per frame. Use <see cref="M:SIPSorceryMedia.Abstractions.RawImage.CopyTo(System.Byte[])"/> with a re-used buffer to avoid that, or
+            <see cref="P:SIPSorceryMedia.Abstractions.RawImage.Sample"/> directly when the frame is fully consumed before the handler returns.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.RawImage.CopyTo(System.Byte[])">
+            <summary>
+            Copies the pixel data into a buffer supplied by the caller, so a buffer can be re-used
+            across frames rather than allocating one per frame as <see cref="M:SIPSorceryMedia.Abstractions.RawImage.GetBuffer"/> does.
+            </summary>
+            <param name="destination">
+            The buffer to copy into. Must be at least <see cref="P:SIPSorceryMedia.Abstractions.RawImage.BufferSize"/> bytes long.
+            </param>
+            <returns>The number of bytes copied.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="destination"/> is null.</exception>
+            <exception cref="T:System.ArgumentException">
+            Thrown when <paramref name="destination"/> is smaller than <see cref="P:SIPSorceryMedia.Abstractions.RawImage.BufferSize"/>.
+            </exception>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.RawImage.CopyTo(System.IntPtr)">
+            <summary>
+            Copies the pixel data straight into unmanaged memory, such as the Scan0 of a locked bitmap,
+            with no intermediate managed array.
+            </summary>
+            <param name="destination">The destination buffer, which must hold at least <see cref="P:SIPSorceryMedia.Abstractions.RawImage.BufferSize"/> bytes.</param>
+            <returns>The number of bytes copied.</returns>
+            <remarks>
+            Only valid while <see cref="P:SIPSorceryMedia.Abstractions.RawImage.Sample"/> is, which is for the duration of the callback that
+            supplied this image. See the overload taking a destination stride for the threading caveat.
+            </remarks>
+            <exception cref="T:System.ArgumentException">Thrown when <paramref name="destination"/> is a null pointer.</exception>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.RawImage.CopyTo(System.IntPtr,System.Int32)">
+             <summary>
+             Copies the pixel data straight into unmanaged memory whose rows are a different length to
+             this image's, such as a GDI+ bitmap that pads each row to a multiple of four bytes.
+             </summary>
+             <param name="destination">The destination buffer.</param>
+             <param name="destinationStride">The byte offset between the start of one destination row and the next.</param>
+             <returns>The number of bytes copied.</returns>
+             <remarks>
+             <para>
+             This is the zero allocation path: one copy, decoder buffer straight to destination. It is
+             only usable while <see cref="P:SIPSorceryMedia.Abstractions.RawImage.Sample"/> is valid, meaning inside the callback that supplied
+             this image, so the destination has to be ready at that point.
+             </para>
+             <para>
+             Take care when the destination belongs to a UI toolkit. Writing to a bitmap from the decoder's
+             thread while the UI thread paints that same bitmap is a data race, and GDI+ in particular
+             throws rather than tearing. Either render synchronously, or copy into memory the UI owns
+             exclusively, or use <see cref="M:SIPSorceryMedia.Abstractions.RawImage.GetBuffer"/> / <see cref="M:SIPSorceryMedia.Abstractions.RawImage.CopyTo(System.Byte[])"/> and defer.
+             </para>
+             </remarks>
+             <exception cref="T:System.ArgumentException">Thrown when <paramref name="destination"/> is a null pointer.</exception>
+             <exception cref="T:System.ArgumentOutOfRangeException">
+             Thrown when <paramref name="destinationStride"/> is not greater than zero.
+             </exception>
+             <example>
+             <para>
+             The example ShowFrame method below copies a decoded 24 bits per pixel frame into a bitmap the calling
+             application owns and displays it.
+             </para>
+             <para>
+             The copy runs on the decoder's callback thread, the only place <see cref="P:SIPSorceryMedia.Abstractions.RawImage.Sample"/> is
+             guaranteed to be valid.
+             </para>
+             <para>
+             That thread also carries the media transport, so it needs to do the minimum amount of work
+             possible. Anything slow on it holds up the packets still arriving.
+             </para>
+             <para>
+             The mechanism used is to rotate two bitmaps so the one being written is never the one the picture
+             box is painting, which GDI+ would throw on: the UI thread hands the previous bitmap back once it has been
+             replaced and it will be used for the next frame copy.
+             </para>
+             <para>
+             The bitmaps are allocated once and re-used until the frame size changes. Allocating one per
+             frame costs several times more than the copy itself and, at 1080p and above, produces enough
+             garbage to stall the application.
+             </para>
+             <para>
+             Note GDI+'s Format24bppRgb is B,G,R in memory despite the name, which is why a Bgr sample
+             can be copied into it verbatim.
+             </para>
+             <para>
+             _spareBmp, _form, _picBox and logger are fields of the calling form.
+             </para>
+             <code>
+             videoSink.OnVideoSinkDecodedSampleFaster += ShowFrame;
+            
+             private static void ShowFrame(RawImage rawImage)
+             {
+                 if (rawImage.PixelFormat != VideoPixelFormatsEnum.Bgr)
+                 {
+                     logger.LogError($"Cannot display decoded video sample, expected pixel format Bgr but got {rawImage.PixelFormat}.");
+                     return;
+                 }
+            
+                 var bmp = Interlocked.Exchange(ref _spareBmp, null);
+            
+                 int width = rawImage.Width;
+                 int height = rawImage.Height;
+            
+                 if (bmp == null || bmp.Width != width || bmp.Height != height)
+                 {
+                     bmp?.Dispose();
+                     bmp = new Bitmap(width, height, PixelFormat.Format24bppRgb);
+                 }
+            
+                 var bmpData = bmp.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+            
+                 try
+                 {
+                     rawImage.CopyTo(bmpData.Scan0, bmpData.Stride);
+                 }
+                 finally
+                 {
+                     bmp.UnlockBits(bmpData);
+                 }
+            
+                 _form.BeginInvoke(new Action(() =>
+                 {
+                     if (_picBox.Width != width || _picBox.Height != height)
+                     {
+                         logger.LogDebug($"Adjusting video display to {width}x{height}.");
+                         _picBox.Width = width;
+                         _picBox.Height = height;
+                     }
+            
+                     var previous = _picBox.Image as Bitmap;
+                     _picBox.Image = bmp;
+            
+                     // The previous picture box bitmap is no longer being painted so it can be
+                     // used for the next frame copy.
+                     Interlocked.Exchange(ref _spareBmp, previous)?.Dispose();
+                 }));
+             }
+             </code>
+             </example>
+        </member>
+        <member name="F:SIPSorceryMedia.Abstractions.VideoSample.PixelFormat">
+            <summary>
+            The pixel format of <see cref="F:SIPSorceryMedia.Abstractions.VideoSample.Sample"/>. Decoders set this to the format they actually
+            produced, which is not necessarily the format that was requested of them.
+            </summary>
+        </member>
+        <member name="T:SIPSorceryMedia.Abstractions.SDPWellKnownMediaFormatsEnum">
+            <summary>
+            A list of standard media formats that can be identified by an ID if
+            there is no qualifying format attribute provided.
+            </summary>
+            <remarks>
+            For definition of well known types see: https://tools.ietf.org/html/rfc3551#section-6.
+            </remarks>
+        </member>
+        <member name="T:SIPSorceryMedia.Abstractions.EncodedAudioFrame">
+            <summary>
+            Represents an encoded media frame. Typically received from the RTP transport.
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.IAudioEndPoint.Pause">
+            <summary>
+            Pauses the audio source and sink. The source will stop sending samples and the sink will stop receiving them.
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.IAudioEndPoint.Resume">
+            <summary>
+            Resumes the audio source and sink. The source will start sending samples and the sink will start receiving them.
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.IAudioEndPoint.Start">
+            <summary>
+            Starts the audio source and sink. The source will start sending samples and the sink will start receiving them.
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.IAudioEndPoint.Close">
+            <summary>
+            Closes the audio source and sink. The source will stop sending samples and the sink will stop receiving them.
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.ITextEndPoint.Pause">
+            <summary>
+            Pauses the text source and sink. The source will stop sending samples and the sink will stop receiving them.
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.ITextEndPoint.Resume">
+            <summary>
+            Resumes the text source and sink. The source will start sending samples and the sink will start receiving them.
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.ITextEndPoint.Start">
+            <summary>
+            Starts the text source and sink. The source will start sending samples and the sink will start receiving them.
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.ITextEndPoint.Close">
+            <summary>
+            Closes the text source and sink. The source will stop sending samples and the sink will stop receiving them.
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.IVideoEndPoint.Pause">
+            <summary>
+            Pauses the video source and sink. The source will stop sending frames and the sink will stop receiving them.
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.IVideoEndPoint.Resume">
+            <summary>
+            Resumes the video source and sink. The source will start sending frames and the sink will start receiving them.
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.IVideoEndPoint.Start">
+            <summary>
+            Starts the video source and sink. The source will start sending frames and the sink will start receiving them.
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.IVideoEndPoint.Close">
+            <summary>
+            Closes the video source and sink. The source will stop sending frames and the sink will stop receiving them.
+            </summary>
+        </member>
+        <member name="T:SIPSorceryMedia.Abstractions.VideoSinkSampleDecodedDelegate">
+            <summary>
+            Delegate for a decoded video frame supplied as a managed array.
+            </summary>
+            <remarks>
+            The sample is only valid for the duration of the call. Handlers that display the frame should
+            copy it into a bitmap they own, rather than wrapping the buffer, and should re-use that bitmap
+            across frames instead of allocating one per frame. See <see cref="T:SIPSorceryMedia.Abstractions.IVideoSink"/> for why.
+            </remarks>
+        </member>
+        <member name="T:SIPSorceryMedia.Abstractions.VideoSinkSampleDecodedFasterDelegate">
+            <summary>
+            Delegate for a decoded video frame supplied as a pointer, avoiding a byte[] allocation per frame.
+            </summary>
+            <remarks>
+            <see cref="P:SIPSorceryMedia.Abstractions.RawImage.Sample"/> points at memory owned by the decoder and is only valid for the
+            duration of the call. See <see cref="T:SIPSorceryMedia.Abstractions.IVideoSink"/> for the recommended way to display it.
+            </remarks>
+        </member>
+        <member name="T:SIPSorceryMedia.Abstractions.IVideoSink">
+            <summary>
+            Interface to represent a video sink.
+            </summary>
+            <remarks>
+            <para>
+            Decoded frames are handed to subscribers as borrowed memory that is only valid for the duration
+            of the event handler. Decoders re-use a single conversion buffer for every frame, so the pointer
+            supplied with one frame is overwritten by the next, and the managed array supplied to the byte[]
+            overload becomes unreachable as soon as the handler returns.
+            </para>
+            <para>
+            A handler that renders the frame synchronously can use the sample in place. A handler that defers
+            the work, for example marshalling to a UI thread, must copy the sample first. Wrapping the buffer
+            in something that outlives the call, such as a Bitmap constructed over the pointer, reads memory
+            that has since been overwritten or freed.
+            </para>
+            <para>
+            The recommended pattern is to copy each frame into a bitmap the caller owns, allocated once and
+            re-used until the frame dimensions change. Allocating a bitmap per frame costs several times more
+            than the copy itself and, at high resolutions, generates enough garbage to stall the application.
+            </para>
+            </remarks>
+        </member>
+        <member name="E:SIPSorceryMedia.Abstractions.IVideoSink.OnVideoSinkDecodedSample">
+            <summary>
+            This event will be fired by the sink after is decodes a video frame from the RTP stream.
+            </summary>
+            <remarks>
+            The sample is only valid for the duration of the handler. See <see cref="T:SIPSorceryMedia.Abstractions.IVideoSink"/>.
+            </remarks>
+        </member>
+        <member name="E:SIPSorceryMedia.Abstractions.IVideoSink.OnVideoSinkDecodedSampleFaster">
+            <summary>
+            As for <see cref="E:SIPSorceryMedia.Abstractions.IVideoSink.OnVideoSinkDecodedSample"/> but avoids a byte[] allocation per frame.
+            </summary>
+            <remarks>
+            The <see cref="P:SIPSorceryMedia.Abstractions.RawImage.Sample"/> pointer is only valid for the duration of the handler.
+            See <see cref="T:SIPSorceryMedia.Abstractions.IVideoSink"/>.
+            </remarks>
+        </member>
+        <member name="T:SIPSorceryMedia.Abstractions.RawVideoSampleDelegate">
+            <summary>
+            Delegate for a captured video frame supplied as a managed array.
+            </summary>
+            <remarks>
+            The sample is only valid for the duration of the call. Handlers that display the frame should
+            copy it into a bitmap they own, re-used across frames. See <see cref="T:SIPSorceryMedia.Abstractions.IVideoSource"/>.
+            </remarks>
+        </member>
+        <member name="T:SIPSorceryMedia.Abstractions.RawVideoSampleFasterDelegate">
+            <summary>
+            Delegate for a captured video frame supplied as a pointer, avoiding a byte[] allocation per frame.
+            </summary>
+            <remarks>
+            <see cref="P:SIPSorceryMedia.Abstractions.RawImage.Sample"/> points at memory owned by the source and is only valid for the
+            duration of the call. See <see cref="T:SIPSorceryMedia.Abstractions.IVideoSource"/>.
+            </remarks>
+        </member>
+        <member name="T:SIPSorceryMedia.Abstractions.IVideoSource">
+            <summary>
+            Interface to represent a video source or capture device.
+            </summary>
+            <remarks>
+            <para>
+            Captured frames are handed to subscribers as borrowed memory that is only valid for the duration
+            of the event handler. Sources re-use a single conversion buffer for every frame, and may free it
+            when the source closes, so a frame retained beyond the call reads memory that has since been
+            overwritten or freed.
+            </para>
+            <para>
+            A handler that renders the frame synchronously can use the sample in place. A handler that defers
+            the work, for example marshalling to a UI thread, must copy the sample first. The recommended
+            pattern is to copy into a bitmap the caller owns, allocated once and re-used until the frame
+            dimensions change, rather than allocating a bitmap per frame or wrapping the supplied buffer.
+            </para>
+            </remarks>
+        </member>
+        <member name="E:SIPSorceryMedia.Abstractions.IVideoSource.OnVideoSourceRawSample">
+            <summary>
+            Fired for each captured frame. The sample is only valid for the duration of the handler.
+            See <see cref="T:SIPSorceryMedia.Abstractions.IVideoSource"/>.
+            </summary>
+        </member>
+        <member name="E:SIPSorceryMedia.Abstractions.IVideoSource.OnVideoSourceRawSampleFaster">
+            <summary>
+            As for <see cref="E:SIPSorceryMedia.Abstractions.IVideoSource.OnVideoSourceRawSample"/> but avoids a byte[] allocation per frame. The
+            <see cref="P:SIPSorceryMedia.Abstractions.RawImage.Sample"/> pointer is only valid for the duration of the handler.
+            See <see cref="T:SIPSorceryMedia.Abstractions.IVideoSource"/>.
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.MediaFormatManager`1.RestrictFormats(System.Func{`0,System.Boolean})">
+            <summary>
+            Requests that the audio sink and source only advertise support for the supplied list of codecs.
+            Only codecs that are already supported and in the <see cref="F:SIPSorceryMedia.Abstractions.MediaFormatManager`1.SupportedFormats" /> list can be 
+            used.
+            </summary>
+            <param name="filter">Function to determine which formats the source formats should be restricted to.</param>
+        </member>
+        <member name="T:SIPSorceryMedia.Abstractions.AudioCommonlyUsedFormats">
+            <summary>
+            A list of audio formats that are commonly used but not standardised.
+            </summary>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.AudioCommonlyUsedFormats.OpusWebRTC">
+            <summary>
+            The Opus audio format typical used for WebRTC scenarios.
+            </summary>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.AudioFormat.FormatID">
+            <summary>
+            The format ID for the codec. If this is a well known codec it should be set to the
+            value from the codec enum. If the codec is a dynamic it must be set between 96–127
+            inclusive.
+            </summary>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.AudioFormat.FormatName">
+            <summary>
+            The official name for the codec. This field is critical for dynamic codecs
+            where it is used to match the codecs in the SDP offer/answer.
+            </summary>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.AudioFormat.RtpClockRate">
+            <summary>
+            The rate used to set RTP timestamps and to be set in the SDP format
+            attribute for this format. It should almost always be the same as the
+            <seealso cref="P:SIPSorceryMedia.Abstractions.AudioFormat.ClockRate"/>. An example of where it's not is G722 which
+            uses a sample rate of 16KHz but an RTP rate of 8KHz for historical reasons.
+            </summary>
+            <example>
+            In the SDP format attribute below the RTP clock rate is 48000.
+            a=rtpmap:109 opus/48000/2
+            </example>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.AudioFormat.ClockRate">
+            <summary>
+            The rate used by decoded samples for this audio format.
+            </summary>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.AudioFormat.ChannelCount">
+            <summary>
+            The number of channels for the audio format.
+            </summary>
+            <example>
+            In the SDP format attribute below the channel count is 2.
+            Note for single channel codecs the parameter is typically omitted from the
+            SDP format attribute.
+            a=rtpmap:109 opus/48000/2
+            </example>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.AudioFormat.Parameters">
+            <summary>
+            This is the string that goes in the SDP "a=fmtp" parameter.
+            This field should be set WITHOUT the "a=fmtp:" prefix.
+            </summary>
+            <example>
+            In the case below this filed should be set as "emphasis=50-15".
+            a=fmtp:97 emphasis=50-15
+            </example>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.AudioFormat.#ctor(SIPSorceryMedia.Abstractions.SDPWellKnownMediaFormatsEnum)">
+            <summary>
+            Creates a new audio format based on a well known SDP format.
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.AudioFormat.#ctor(SIPSorceryMedia.Abstractions.AudioCodecsEnum,System.Int32,System.Int32,System.Int32,System.String)">
+            <summary>
+            Creates a new audio format based on a well known codec.
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.AudioFormat.#ctor(SIPSorceryMedia.Abstractions.AudioCodecsEnum,System.Int32,System.Int32,System.Int32,System.Int32,System.String)">
+            <summary>
+            Creates a new audio format based on a well known codec.
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.AudioFormat.#ctor(System.Int32,System.String,System.Int32,System.Int32,System.String)">
+            <summary>
+            Creates a new audio format based on a dynamic codec (or an unsupported well known codec).
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.AudioFormat.#ctor(System.Int32,System.String,System.Int32,System.Int32,System.Int32,System.String)">
+            <summary>
+            Creates a new audio format based on a dynamic codec (or an unsupported well known codec).
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.TextFormat.#ctor(System.Int32,System.String,System.Int32,System.String)">
+            <summary>
+            Creates a new text format based on a dynamic codec (or an unsupported well known codec).
+            </summary>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.TextFormat.FormatID">
+            <summary>
+            The format ID for the codec. If this is a well known codec it should be set to the
+            value from the codec enum. If the codec is a dynamic it must be set between 96–127
+            inclusive.
+            </summary>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.TextFormat.FormatName">
+            <summary>
+            The official name for the codec. This field is critical for dynamic codecs
+            where it is used to match the codecs in the SDP offer/answer.
+            </summary>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.TextFormat.ClockRate">
+            <summary>
+            The rate used by decoded samples for this text format.
+            </summary>
+            <remarks>
+            Example, 1000 is the clock rate:
+            a=rtpmap:98 t140/1000
+            </remarks>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.TextFormat.Parameters">
+            <summary>
+            This is the "a=fmtp" format parameter that will be set in the SDP offer/answer.
+            This field should be set WITHOUT the "a=fmtp:0" prefix.
+            </summary>
+            <remarks>
+            Example:
+            a=fmtp:100 98/98/98
+            </remarks>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.VideoFormat.FormatID">
+            <summary>
+            The format ID for the codec. If this is a well known codec it should be set to the
+            value from the codec enum. If the codec is a dynamic it must be set between 96–127
+            inclusive.
+            </summary>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.VideoFormat.FormatName">
+            <summary>
+            The official name for the codec. This field is critical for dynamic codecs
+            where it is used to match the codecs in the SDP offer/answer.
+            </summary>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.VideoFormat.ClockRate">
+            <summary>
+            The rate used by decoded samples for this video format.
+            </summary>
+            <remarks>
+            Example, 90000 is the clock rate:
+            a=rtpmap:102 AV1/90000
+            </remarks>
+        </member>
+        <member name="P:SIPSorceryMedia.Abstractions.VideoFormat.Parameters">
+            <summary>
+            This is the "a=fmtp" format parameter that will be set in the SDP offer/answer.
+            This field should be set WITHOUT the "a=fmtp:0" prefix.
+            </summary>
+            <remarks>
+            Example:
+            a=fmtp:102 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f"
+            </remarks>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.VideoFormat.#ctor(SIPSorceryMedia.Abstractions.SDPWellKnownMediaFormatsEnum)">
+            <summary>
+            Creates a new video format based on a well known SDP format.
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.VideoFormat.#ctor(SIPSorceryMedia.Abstractions.VideoCodecsEnum,System.Int32,System.Int32,System.String)">
+            <summary>
+            Creates a new video format based on a well known codec.
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.VideoFormat.#ctor(System.Int32,System.String,System.Int32,System.String)">
+            <summary>
+            Creates a new video format based on a dynamic codec (or an unsupported well known codec).
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.ToI420(System.Int32,System.Int32,System.Int32,System.Byte[],SIPSorceryMedia.Abstractions.VideoPixelFormatsEnum)">
+            <summary>
+            Attempts to convert an image buffer into an I420 format.
+            </summary>
+            <param name="width">The width of the image in pixels.</param>
+            <param name="height">The height of the image in pixels.</param>
+            <param name="stride">The stride of the image. Currently this method can only convert RGB and BGR
+            formats. For those formats the stride is typically: width x bytes per pixel. For example for
+            a 640x480 RGB sample stride=640x3. For a 640x480 BGRA sample stride=640x4. Note in some cases 
+            the stride could be greater than the width x bytes per pixel.</param>
+            <param name="sample">The buffer containing the image data.</param>
+            <param name="pixelFormat">The pixel format of the image.</param>
+            <returns>If successful a buffer containing an I420 formatted image sample.</returns>
+            <remarks>
+            This overload allocates a new output buffer. For conversion workloads around
+            1080p at 30 fps or equivalent, use
+            <see cref="M:SIPSorceryMedia.Abstractions.PixelConverter.ToI420(System.Buffers.IBufferWriter{System.Byte},System.Int32,System.Int32,System.Int32,System.ReadOnlySpan{System.Byte},SIPSorceryMedia.Abstractions.VideoPixelFormatsEnum)"/>
+            with a reusable buffer writer to reduce allocations.
+            </remarks>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.ToI420(System.Buffers.IBufferWriter{System.Byte},System.Int32,System.Int32,System.Int32,System.ReadOnlySpan{System.Byte},SIPSorceryMedia.Abstractions.VideoPixelFormatsEnum)">
+            <summary>
+            Attempts to convert an image buffer into an I420 format.
+            </summary>
+            <param name="output">The buffer writer to write the I420 data to.</param>
+            <param name="width">The width of the image in pixels.</param>
+            <param name="height">The height of the image in pixels.</param>
+            <param name="stride">
+            The stride of the image. Currently this method can only convert RGB and BGR formats. For those formats the
+            stride is typically: width x bytes per pixel. For example for a 640x480 RGB sample stride=640x3. For a 640x480
+            BGRA sample stride=640x4. Note in some cases the stride could be greater than the width x bytes per pixel.
+            </param>
+            <param name="sample">The buffer containing the image data.</param>
+            <param name="pixelFormat">The pixel format of the image.</param>
+            <returns>The number of bytes written to the output buffer.</returns>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.RGBAtoI420(System.Byte[],System.Int32,System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Converts an RGBA sample to an I420 formatted sample.
+            </summary>
+            <param name="rgba">The RGBA image sample.</param>
+            <param name="width">The width in pixels of the RGBA sample.</param>
+            <param name="height">The height in pixels of the RGBA sample.</param>
+            <param name="stride">The stride of the RGBA sample.</param>
+            <param name="dop">The degree of parallelism for converting.</param>
+            <returns>An I420 buffer representing the source image.</returns>
+            <remarks>
+            <para>
+            <sealso href="https://docs.microsoft.com/en-us/previous-versions/visualstudio/hh394035(v=vs.105)">https://docs.microsoft.com/en-us/previous-versions/visualstudio/hh394035(v=vs.105)</sealso>
+            <sealso href="http://qiita.com/gomachan7/items/54d43693f943a0986e95">http://qiita.com/gomachan7/items/54d43693f943a0986e95</sealso>
+            </para>
+            <para>
+            This overload allocates a new output buffer. For conversion workloads around
+            1080p at 30 fps or equivalent, use
+            <see cref="M:SIPSorceryMedia.Abstractions.PixelConverter.RGBAtoI420(System.Buffers.IBufferWriter{System.Byte},System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Int32)"/>
+            with a reusable buffer writer to reduce allocations.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.RGBAtoI420(System.Buffers.IBufferWriter{System.Byte},System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Converts an RGBA sample to an I420 formatted sample.
+            </summary>
+            <param name="bufferWriter">The buffer writer to write the I420 data to.</param>
+            <param name="rgba">The RGBA image sample.</param>
+            <param name="width">The width in pixels of the RGBA sample.</param>
+            <param name="height">The height in pixels of the RGBA sample.</param>
+            <param name="stride">The stride of the RGBA sample.</param>
+            <remarks>
+            <sealso href="https://docs.microsoft.com/en-us/previous-versions/visualstudio/hh394035(v=vs.105)">https://docs.microsoft.com/en-us/previous-versions/visualstudio/hh394035(v=vs.105)</sealso>
+            <sealso href="http://qiita.com/gomachan7/items/54d43693f943a0986e95">http://qiita.com/gomachan7/items/54d43693f943a0986e95</sealso>
+            </remarks>
+            <returns>The number of bytes written to the output buffer.</returns>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.RGBtoI420(System.Byte[],System.Int32,System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Converts an RGB sample to an I420 formatted sample.
+            </summary>
+            <param name="rgb">The RGB image sample.</param>
+            <param name="width">The width in pixels of the RGB sample.</param>
+            <param name="height">The height in pixels of the RGB sample.</param>
+            <param name="stride">The stride of the RGB sample.</param>
+            <param name="dop">The degree of parallelism for converting.</param>
+            <returns>An I420 buffer representing the source image.</returns>
+            <remarks>
+            This overload allocates a new output buffer. For conversion workloads around
+            1080p at 30 fps or equivalent, use
+            <see cref="M:SIPSorceryMedia.Abstractions.PixelConverter.RGBtoI420(System.Buffers.IBufferWriter{System.Byte},System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Int32)"/>
+            with a reusable buffer writer to reduce allocations.
+            </remarks>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.RGBtoI420(System.Buffers.IBufferWriter{System.Byte},System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Converts an RGB sample to an I420 formatted sample.
+            </summary>
+            <param name="bufferWriter">The buffer writer to write the I420 data to.</param>
+            <param name="rgb">The RGB image sample.</param>
+            <param name="width">The width in pixels of the RGB sample.</param>
+            <param name="height">The height in pixels of the RGB sample.</param>
+            <param name="stride">The stride of the RGB sample.</param>
+            <returns>The number of bytes written to the output buffer.</returns>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.BGRtoI420(System.Byte[],System.Int32,System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Converts a BGR sample to an I420 formatted sample.
+            </summary>
+            <param name="bgr">The BGR image sample.</param>
+            <param name="width">The width in pixels of the BGR sample.</param>
+            <param name="height">The height in pixels of the BGR sample.</param>
+            <param name="stride">The stride of the BGR sample.</param>
+            <param name="dop">The degree of parallelism for converting.</param>
+            <returns>An I420 buffer representing the source image.</returns>
+            <remarks>
+            This overload allocates a new output buffer. For conversion workloads around
+            1080p at 30 fps or equivalent, use
+            <see cref="M:SIPSorceryMedia.Abstractions.PixelConverter.BGRtoI420(System.Buffers.IBufferWriter{System.Byte},System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Int32)"/>
+            with a reusable buffer writer to reduce allocations.
+            </remarks>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.BGRtoI420(System.Buffers.IBufferWriter{System.Byte},System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Converts a BGR sample to an I420 formatted sample.
+            </summary>
+            <param name="output">The buffer writer to write the I420 data to.</param>
+            <param name="bgr">The BGR image sample.</param>
+            <param name="width">The width in pixels of the BGR sample.</param>
+            <param name="height">The height in pixels of the BGR sample.</param>
+            <param name="stride">The stride of the BGR sample.</param>
+            <returns>The number of bytes written to the output buffer.</returns>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.BGRAtoI420(System.Byte[],System.Int32,System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Converts a BGRA sample to an I420 formatted sample.
+            </summary>
+            <param name="bgra">The BGRA image sample.</param>
+            <param name="width">The width in pixels of the BGRA sample.</param>
+            <param name="height">The height in pixels of the BGRA sample.</param>
+            <param name="stride">The stride of the BGRA sample.</param>
+            <param name="dop">The degree of parallelism for converting.</param>
+            <returns>An I420 buffer representing the source image.</returns>
+            <remarks>
+            This overload allocates a new output buffer. For conversion workloads around
+            1080p at 30 fps or equivalent, use
+            <see cref="M:SIPSorceryMedia.Abstractions.PixelConverter.BGRAtoI420(System.Buffers.IBufferWriter{System.Byte},System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Int32)"/>
+            with a reusable buffer writer to reduce allocations.
+            </remarks>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.BGRAtoI420(System.Buffers.IBufferWriter{System.Byte},System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Converts a BGRA sample to an I420 formatted sample.
+            </summary>
+            <param name="output">The buffer writer to write the I420 data to.</param>
+            <param name="bgra">The BGRA image sample.</param>
+            <param name="width">The width in pixels of the BGRA sample.</param>
+            <param name="height">The height in pixels of the BGRA sample.</param>
+            <param name="stride">The stride of the BGRA sample.</param>
+            <returns>The number of bytes written to the output buffer.</returns>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.I420toRGB(System.Byte[],System.Int32,System.Int32,System.Int32@,System.Int32)">
+            <summary>
+            Converts an I420 sample to an RGB formatted sample.
+            </summary>
+            <param name="data">The I420 image sample.</param>
+            <param name="width">The width in pixels of the I420 sample.</param>
+            <param name="height">The height in pixels of the I420 sample.</param>
+            <param name="stride">The stride to use for the desintation RGB sample.</param>
+            <param name="dop">The degree of parallelism for converting.</param>
+            <returns>An RGB buffer representing the source image.</returns>
+            <remarks>
+            This overload allocates a new output buffer. For conversion workloads around
+            1080p at 30 fps or equivalent, use
+            <see cref="M:SIPSorceryMedia.Abstractions.PixelConverter.I420toRGB(System.Buffers.IBufferWriter{System.Byte},System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Int32@)"/>
+            with a reusable buffer writer to reduce allocations.
+            </remarks>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.I420toRGB(System.Buffers.IBufferWriter{System.Byte},System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Int32@)">
+            <summary>
+            Converts an I420 sample to an RGB formatted sample.
+            </summary>
+            <param name="output">The buffer writer to write the RGB data to.</param>
+            <param name="data">The I420 image sample.</param>
+            <param name="width">The width in pixels of the I420 sample.</param>
+            <param name="height">The height in pixels of the I420 sample.</param>
+            <param name="stride">The stride to use for the desintation RGB sample.</param>
+            <returns>The number of bytes written to the output buffer.</returns>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.I420toBGR(System.Byte[],System.Int32,System.Int32,System.Int32@,System.Int32)">
+            <summary>
+            Converts an I420 sample to an BGR formatted sample.
+            </summary>
+            <param name="data">The I420 image sample.</param>
+            <param name="width">The width in pixels of the I420 sample.</param>
+            <param name="height">The height in pixels of the I420 sample.</param>
+            <param name="stride">The stride to use for the desintation BGR sample.</param>
+            <param name="dop">The degree of parallelism for converting.</param>
+            <returns>A BGR buffer representing the source image.</returns>
+            <remarks>
+            This overload allocates a new output buffer. For conversion workloads around
+            1080p at 30 fps or equivalent, use
+            <see cref="M:SIPSorceryMedia.Abstractions.PixelConverter.I420toBGR(System.Buffers.IBufferWriter{System.Byte},System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Int32@)"/>
+            with a reusable buffer writer to reduce allocations.
+            </remarks>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.I420toBGR(System.Buffers.IBufferWriter{System.Byte},System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Int32@)">
+            <summary>
+            Converts an I420 sample to an BGR formatted sample.
+            </summary>
+            <param name="output">The buffer writer to write the BGR data to.</param>
+            <param name="data">The I420 image sample.</param>
+            <param name="width">The width in pixels of the I420 sample.</param>
+            <param name="height">The height in pixels of the I420 sample.</param>
+            <param name="stride">The stride to use for the desintation BGR sample.</param>
+            <returns>The number of bytes written to the output buffer.</returns>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.NV12toBGR(System.Byte[],System.Int32,System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Converts an NV12 sample to an BGR formatted sample.
+            </summary>
+            <param name="data">The NV12 image sample.</param>
+            <param name="width">The width in pixels of the NV12 sample.</param>
+            <param name="height">The height in pixels of the NV12 sample.</param>
+            <param name="stride">The stride to use for the desintation BGR sample.</param>
+            <param name="dop">The degree of parallelism for converting.</param>
+            <returns>A BGR buffer representing the source image.</returns>
+            <remarks>
+            This overload allocates a new output buffer. For conversion workloads around
+            1080p at 30 fps or equivalent, use
+            <see cref="M:SIPSorceryMedia.Abstractions.PixelConverter.NV12toBGR(System.Buffers.IBufferWriter{System.Byte},System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Int32)"/>
+            with a reusable buffer writer to reduce allocations.
+            </remarks>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.NV12toBGR(System.Buffers.IBufferWriter{System.Byte},System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Converts an NV12 sample to an BGR formatted sample.
+            </summary>
+            <param name="output">The buffer writer to write the BGR data to.</param>
+            <param name="data">The NV12 image sample.</param>
+            <param name="width">The width in pixels of the NV12 sample.</param>
+            <param name="height">The height in pixels of the NV12 sample.</param>
+            <param name="stride">The stride to use for the desintation BGR sample.</param>
+            <returns>The number of bytes written to the output buffer.</returns>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.NV12toI420(System.Byte[],System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Converts an NV12 sample to an I420 formatted sample.
+            NV12: Y plane followed by interleaved UV plane (UVUVUV...).
+            I420: Y plane followed by U plane, then V plane (planar format).
+            </summary>
+            <param name="nv12">The NV12 image sample.</param>
+            <param name="width">The width in pixels of the NV12 sample.</param>
+            <param name="height">The height in pixels of the NV12 sample.</param>
+            <param name="dop">The degree of parallelism for converting.</param>
+            <returns>An I420 buffer representing the source image.</returns>
+            <remarks>
+            This overload allocates a new output buffer. For conversion workloads around
+            1080p at 30 fps or equivalent, use
+            <see cref="M:SIPSorceryMedia.Abstractions.PixelConverter.NV12toI420(System.Buffers.IBufferWriter{System.Byte},System.ReadOnlySpan{System.Byte},System.Int32,System.Int32)"/>
+            with a reusable buffer writer to reduce allocations.
+            </remarks>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.NV12toI420(System.Buffers.IBufferWriter{System.Byte},System.ReadOnlySpan{System.Byte},System.Int32,System.Int32)">
+            <summary>
+            Converts an NV12 sample to an I420 formatted sample.
+            NV12: Y plane followed by interleaved UV plane (UVUVUV...).
+            I420: Y plane followed by U plane, then V plane (planar format).
+            </summary>
+            <param name="output">The buffer writer to write the I420 data to.</param>
+            <param name="nv12">The NV12 image sample.</param>
+            <param name="width">The width in pixels of the NV12 sample.</param>
+            <param name="height">The height in pixels of the NV12 sample.</param>
+            <returns>The number of bytes written to the output buffer.</returns>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.DeinterleaveUVSimd(System.Span{System.Byte},System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Int32,System.Int32,System.Int32)">
+            <summary>
+            SIMD-optimized de-interleave of UV plane from NV12 format (UVUVUV...) to I420 format (separate U and V planes).
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.DeinterleaveVector256(System.Runtime.Intrinsics.Vector256{System.Byte})">
+            <summary>
+            De-interleave 16 byte pairs from a Vector256 into two Vector128 containing U and V values.
+            Input: [U0,V0,U1,V1,U2,V2,...,U15,V15]
+            Output: U=[U0,U1,...,U15], V=[V0,V1,...,V15]
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.DeinterleaveVector128(System.Runtime.Intrinsics.Vector128{System.Byte})">
+            <summary>
+            De-interleave 8 byte pairs from a Vector128 into two Vector64 containing U and V values.
+            Input: [U0,V0,U1,V1,U2,V2,U3,V3,U4,V4,U5,V5,U6,V6,U7,V7]
+            Output: U=[U0,U1,U2,U3,U4,U5,U6,U7], V=[V0,V1,V2,V3,V4,V5,V6,V7]
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.I420toNV12(System.Byte[],System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Converts an I420 sample to an NV12 formatted sample.
+            I420: Y plane followed by U plane, then V plane (planar format).
+            NV12: Y plane followed by interleaved UV plane (UVUVUV...).
+            </summary>
+            <param name="i420">The I420 image sample.</param>
+            <param name="width">The width in pixels of the I420 sample.</param>
+            <param name="height">The height in pixels of the I420 sample.</param>
+            <param name="dop">The degree of parallelism for converting.</param>
+            <returns>An NV12 buffer representing the source image.</returns>
+            <remarks>
+            This overload allocates a new output buffer. For conversion workloads around
+            1080p at 30 fps or equivalent, use
+            <see cref="M:SIPSorceryMedia.Abstractions.PixelConverter.I420toNV12(System.Buffers.IBufferWriter{System.Byte},System.ReadOnlySpan{System.Byte},System.Int32,System.Int32)"/>
+            with a reusable buffer writer to reduce allocations.
+            </remarks>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.I420toNV12(System.Buffers.IBufferWriter{System.Byte},System.ReadOnlySpan{System.Byte},System.Int32,System.Int32)">
+            <summary>
+            Converts an I420 sample to an NV12 formatted sample.
+            I420: Y plane followed by U plane, then V plane (planar format).
+            NV12: Y plane followed by interleaved UV plane (UVUVUV...).
+            </summary>
+            <param name="output">The buffer writer to write the NV12 data to.</param>
+            <param name="i420">The I420 image sample.</param>
+            <param name="width">The width in pixels of the I420 sample.</param>
+            <param name="height">The height in pixels of the I420 sample.</param>
+            <returns>The number of bytes written to the output buffer.</returns>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.InterleaveUVSimd(System.Span{System.Byte},System.ReadOnlySpan{System.Byte},System.Int32,System.Int32,System.Int32,System.Int32,System.Int32)">
+            <summary>
+            SIMD-optimized interleave of separate U and V planes from I420 format to NV12 format (UVUVUV...).
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.InterleaveVector256(System.Runtime.Intrinsics.Vector256{System.Byte},System.Runtime.Intrinsics.Vector256{System.Byte})">
+            <summary>
+            Interleave two Vector256 of U and V values into two Vector256 of interleaved UV pairs.
+            Input: U=[U0,U1,...,U31], V=[V0,V1,...,V31]
+            Output: UV0=[U0,V0,U1,V1,...,U15,V15], UV1=[U16,V16,...,U31,V31]
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.InterleaveVector128(System.Runtime.Intrinsics.Vector128{System.Byte},System.Runtime.Intrinsics.Vector128{System.Byte})">
+            <summary>
+            Interleave two Vector128 of U and V values into two Vector128 of interleaved UV pairs.
+            Input: U=[U0,U1,...,U15], V=[V0,V1,...,V15]
+            Output: UV0=[U0,V0,U1,V1,...,U7,V7], UV1=[U8,V8,...,U15,V15]
+            </summary>
+        </member>
+        <member name="M:SIPSorceryMedia.Abstractions.PixelConverter.InterleaveVector128ToTwo(System.Runtime.Intrinsics.Vector128{System.Byte},System.Runtime.Intrinsics.Vector128{System.Byte})">
+            <summary>
+            Interleave two Vector128 of 16 bytes each into two Vector128 of interleaved pairs.
+            Input: A=[A0,A1,...,A15], B=[B0,B1,...,B15]
+            Output: Out0=[A0,B0,A1,B1,...,A7,B7], Out1=[A8,B8,...,A15,B15]
+            </summary>
+        </member>
+    </members>
+</doc>

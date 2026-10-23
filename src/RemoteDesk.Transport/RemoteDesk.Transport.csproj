@@ -3,5 +3,8 @@
     <ProjectReference Include="../RemoteDesk.Core/RemoteDesk.Core.csproj" />
     <ProjectReference Include="../RemoteDesk.Protocol/RemoteDesk.Protocol.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="SIPSorcery" />
+  </ItemGroup>
 </Project>
 
