@@ -59,6 +59,23 @@ public static partial class ProtocolValidation
         }
     }
 
+    public static void Validate(RtcSessionDescriptionMessage message)
+    {
+        RequireText(message.Type, 32, nameof(message.Type));
+        if (string.IsNullOrWhiteSpace(message.Sdp) || message.Sdp.Length > 64 * 1024)
+        {
+            throw new ArgumentException("SDP payload is invalid or too large.", nameof(message));
+        }
+    }
+
+    public static void Validate(RtcIceCandidateMessage message)
+    {
+        if (string.IsNullOrWhiteSpace(message.Candidate) || message.Candidate.Length > 2048)
+        {
+            throw new ArgumentException("ICE candidate is invalid or too large.", nameof(message));
+        }
+    }
+
     public static void RequireSafeFileName(string fileName)
     {
         RequireText(fileName, 255, nameof(fileName));

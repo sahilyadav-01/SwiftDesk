@@ -12,6 +12,11 @@ public enum ControlMessageKind
     FileCancel,
     Reboot,
     Disconnect,
+    RtcOffer,
+    RtcAnswer,
+    RtcIceCandidate,
+    ScreenFrame,
+    ScreenDimensions,
 }
 
 public sealed record ControlEnvelope(
@@ -19,6 +24,20 @@ public sealed record ControlEnvelope(
     string SessionId,
     long Sequence,
     string PayloadJson);
+
+public sealed record RtcSessionDescriptionMessage(string Type, string Sdp);
+
+public sealed record RtcIceCandidateMessage(string Candidate, string? SdpMid, ushort? SdpMLineIndex);
+
+public sealed record ScreenDimensionsMessage(int Width, int Height);
+
+public sealed record ScreenFrameMessage(
+    long Sequence,
+    int Width,
+    int Height,
+    string PixelFormat,
+    string Base64Data,
+    long TimestampUnixMs);
 
 public sealed record PeerReadyMessage(string DeviceId, SessionRole Role);
 
