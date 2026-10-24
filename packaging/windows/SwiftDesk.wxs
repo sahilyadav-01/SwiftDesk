@@ -4,7 +4,8 @@
            Manufacturer="SwiftDesk Technologies"
            Version="1.0.0"
            UpgradeCode="4C6F4B61-9E2A-4B6A-8A9C-7F6F1D9E3B4C"
-           Language="1033">
+           Language="1033"
+           Scope="perMachine">
     
     <MajorUpgrade DowngradeErrorMessage="A newer version of SwiftDesk is already installed." />
     <MediaTemplate EmbedCab="yes" />
@@ -12,7 +13,7 @@
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="SwiftDesk">
         <Component Id="PrivilegedHelperService" Guid="7F8A9B0C-1D2E-3F4A-5B6C-7D8E9F0A1B2C">
-          <File Source="!(bindpath.)RemoteDesk.PrivilegedHelper.exe" KeyPath="yes" />
+          <File Source="!(bindpath.PublishDir)\RemoteDesk.PrivilegedHelper.exe" KeyPath="yes" />
           <ServiceInstall
               Id="SwiftDeskHelperServiceInstall"
               Name="SwiftDeskPrivilegedHelper"
@@ -34,10 +35,10 @@
     </StandardDirectory>
 
     <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
-      <Files Include="!(bindpath.)**">
-        <Exclude Files="!(bindpath.)RemoteDesk.PrivilegedHelper.exe" />
-        <Exclude Files="!(bindpath.)*.pdb" />
-        <Exclude Files="!(bindpath.)*.key.sample" />
+      <Files Include="!(bindpath.PublishDir)\**">
+        <Exclude Files="!(bindpath.PublishDir)\RemoteDesk.PrivilegedHelper.exe" />
+        <Exclude Files="!(bindpath.PublishDir)\*.pdb" />
+        <Exclude Files="!(bindpath.PublishDir)\*.key.sample" />
       </Files>
     </ComponentGroup>
 
@@ -48,15 +49,47 @@
             <Permission User="NT AUTHORITY\SYSTEM" GenericAll="yes" />
             <Permission User="Administrators" GenericAll="yes" />
           </CreateFolder>
-          <File Id="RebootKeyFile" Source="!(bindpath.)reboot.key.sample" Name="reboot.key" KeyPath="yes" />
+          <File Id="RebootKeyFile" Source="!(bindpath.PublishDir)\reboot.key.sample" Name="reboot.key" KeyPath="yes" />
         </Component>
       </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="SwiftDesk">
+        <Component Id="ApplicationShortcut" Guid="9A8B7C6D-5E4F-3A2B-1C0D-9E8F7A6B5C4D">
+          <Shortcut Id="ApplicationStartMenuShortcut"
+                    Name="SwiftDesk"
+                    Description="SwiftDesk Cross-Platform Remote Desktop Client"
+                    Target="[INSTALLFOLDER]RemoteDesk.Client.exe"
+                    WorkingDirectory="INSTALLFOLDER" />
+          <Shortcut Id="AgentStartMenuShortcut"
+                    Name="SwiftDesk Agent"
+                    Description="SwiftDesk Remote Desktop Agent"
+                    Target="[INSTALLFOLDER]RemoteDesk.Agent.exe"
+                    WorkingDirectory="INSTALLFOLDER" />
+          <RemoveFolder Id="CleanUpShortCut" On="uninstall" />
+          <RegistryValue Root="HKCU" Key="Software\SwiftDesk" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="DesktopShortcutComponent" Guid="A1B2C3D4-E5F6-7A8B-9C0D-1E2F3A4B5C6D">
+        <Shortcut Id="ApplicationDesktopShortcut"
+                  Name="SwiftDesk"
+                  Description="SwiftDesk Cross-Platform Remote Desktop Client"
+                  Target="[INSTALLFOLDER]RemoteDesk.Client.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue Root="HKCU" Key="Software\SwiftDesk" Name="desktopShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
     </StandardDirectory>
 
     <Feature Id="MainApplication" Title="SwiftDesk Core" Level="1">
       <ComponentGroupRef Id="ProductComponents" />
       <ComponentRef Id="PrivilegedHelperService" />
       <ComponentRef Id="MachineSecretDirectory" />
+      <ComponentRef Id="ApplicationShortcut" />
+      <ComponentRef Id="DesktopShortcutComponent" />
     </Feature>
   </Package>
 </Wix>

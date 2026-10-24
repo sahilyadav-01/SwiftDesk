@@ -116,11 +116,12 @@ dotnet run --project src/RemoteDesk.Agent -- `
   --download-directory C:\Temp\SwiftDeskDownloads
 ```
 
-The agent will enroll and output its credentials:
+On first launch, the agent enrolls the computer, creates a persistent unique SwiftDesk ID,
+and stores the identity in the current user's local application-data directory. Later launches
+reuse the same ID automatically:
 ```text
-Enrollment succeeded. Store these values in an OS-protected secret store:
-REMOTEDESK_DEVICE_ID=dev_...
-REMOTEDESK_DEVICE_SECRET=...
+Enrollment succeeded. This device now has a persistent SwiftDesk ID.
+SwiftDesk ID: dev_...
 RemoteDesk agent dev_... on Windows
 Available permissions: ViewScreen, ControlInput, TransferFiles
 ```
@@ -135,7 +136,8 @@ dotnet run --project src/RemoteDesk.Client
 
 ### 4. Connect and Control
 
-1. Paste the `REMOTEDESK_DEVICE_ID` into the **Target device ID** field.
+1. Copy the ID from the remote computer's **Your SwiftDesk ID** card and paste it into the
+   **Remote device ID** field.
 2. Select your desired permissions:
    - **View screen**: Streams the remote desktop.
    - **Control input**: Enables mouse clicks, movements, scroll, and keyboard events.

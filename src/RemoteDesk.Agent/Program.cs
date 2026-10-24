@@ -46,6 +46,18 @@ using var httpClient = new HttpClient { BaseAddress = options.Server };
 var api = new SignalingApiClient(httpClient);
 var deviceId = options.DeviceId;
 var deviceSecret = options.DeviceSecret;
+var loadedPersistedIdentity = false;
+
+if (string.IsNullOrWhiteSpace(deviceId) && string.IsNullOrWhiteSpace(deviceSecret))
+{
+    var persistedIdentity = DeviceIdentityStore.Load();
+    if (persistedIdentity is not null)
+    {
+        deviceId = persistedIdentity.DeviceId;
+        deviceSecret = persistedIdentity.DeviceSecret;
+        loadedPersistedIdentity = true;
+    }
+}
 
 if (string.IsNullOrWhiteSpace(deviceId) || string.IsNullOrWhiteSpace(deviceSecret))
 {
@@ -61,11 +73,36 @@ if (string.IsNullOrWhiteSpace(deviceId) || string.IsNullOrWhiteSpace(deviceSecre
         shutdown.Token);
     deviceId = enrollment.DeviceId;
     deviceSecret = enrollment.DeviceSecret;
-    Console.WriteLine("Enrollment succeeded. Store these values in an OS-protected secret store:");
-    Console.WriteLine($"REMOTEDESK_DEVICE_ID={deviceId}");
-    Console.WriteLine($"REMOTEDESK_DEVICE_SECRET={deviceSecret}");
+    PersistIdentity(deviceId, deviceSecret);
+    Console.WriteLine("Enrollment succeeded. This device now has a persistent SwiftDesk ID.");
 }
 
+if (loadedPersistedIdentity)
+{
+    try
+    {
+        await api.HeartbeatAsync(
+            deviceId,
+            deviceSecret,
+            new HeartbeatRequest("0.1.0", capabilities),
+            shutdown.Token);
+    }
+    catch (SignalingApiException exception) when (
+        exception.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.NotFound
+        && !string.IsNullOrWhiteSpace(options.BootstrapToken))
+    {
+        Console.WriteLine("The saved ID is not registered on this server. Enrolling this device again…");
+        var enrollment = await api.EnrollAsync(
+            options.BootstrapToken,
+            new DeviceEnrollmentRequest(options.DeviceName, capabilities.Platform),
+            shutdown.Token);
+        deviceId = enrollment.DeviceId;
+        deviceSecret = enrollment.DeviceSecret;
+        PersistIdentity(deviceId, deviceSecret);
+    }
+}
+
+Console.WriteLine($"SwiftDesk ID: {deviceId}");
 Console.WriteLine($"RemoteDesk agent {deviceId} on {capabilities.Platform}");
 Console.WriteLine($"Available permissions: {availablePermissions}");
 foreach (var requirement in capabilities.Requirements)
@@ -146,6 +183,22 @@ finally
 }
 
 return 0;
+
+static void PersistIdentity(string deviceId, string deviceSecret)
+{
+    try
+    {
+        DeviceIdentityStore.Save(new LocalDeviceIdentity(deviceId, deviceSecret));
+        Console.WriteLine($"Device identity saved for this user: {DeviceIdentityStore.GetIdentityPath()}");
+    }
+    catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+    {
+        Console.Error.WriteLine($"Warning: device identity could not be saved: {exception.Message}");
+        Console.Error.WriteLine("Store REMOTEDESK_DEVICE_ID and REMOTEDESK_DEVICE_SECRET securely before restarting the agent.");
+        Console.WriteLine($"REMOTEDESK_DEVICE_ID={deviceId}");
+        Console.WriteLine($"REMOTEDESK_DEVICE_SECRET={deviceSecret}");
+    }
+}
 
 static async Task RunSessionAsync(
     SignalingApiClient api,
