@@ -14,7 +14,7 @@
 
 SwiftDesk provides secure, owner-consented remote support across Windows, Linux (Wayland & X11), and macOS. Engineered for low latency and enterprise compliance, it features real-time screen sharing, remote mouse and keyboard control, chunked integrity-checked file transfers, attended access consent, cryptographic session tickets, clustered relay fallback, and an isolated privileged remote reboot service.
 
-[Architecture](#architecture-overview) • [Capabilities](#current-status--capabilities) • [Repository Structure](#repository-structure) • [Quickstart](#quickstart-running-swiftdesk-locally) • [Packaging](#cross-platform-packaging--installers) • [Enterprise Security](#enterprise-security--architecture) • [Configuration](#configuration-reference)
+[Architecture](#architecture-overview) • [Capabilities](#current-status--capabilities) • [Repository Structure](#repository-structure) • [Quickstart](#quickstart-running-swiftdesk-locally) • [Packaging](#cross-platform-packaging--installers) • [Enterprise Security](#enterprise-security--architecture) • [Configuration](#configuration-reference) • [License](#license--copyright)
 
 </div>
 
@@ -44,6 +44,7 @@ SwiftDesk provides secure, owner-consented remote support across Windows, Linux 
 - [Configuration Reference](#configuration-reference)
 - [Production Deployment with Docker](#production-deployment-with-docker)
 - [Security Invariants](#security-invariants)
+- [License & Copyright](#license--copyright)
 
 ---
 
@@ -389,7 +390,24 @@ docker compose logs -f signaling
 
 ---
 
+## License & Copyright
+
+```text
+Copyright (c) 2026 Sahil Yadav. All rights reserved.
+```
+
+Licensed under the [Apache License, Version 2.0](LICENSE). You may obtain a copy of the License at:
+
+```
+http://www.apache.org/licenses/LICENSE-2.0
+```
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the [LICENSE](LICENSE) file for the specific language governing permissions and limitations.
+
+---
+
 <div align="center">
-  <b>SwiftDesk</b> • Built with .NET 10 LTS and Avalonia UI • Distributed under the Apache-2.0 / Commercial License
+  <b>SwiftDesk</b> • Built with .NET 10 LTS and Avalonia UI<br />
+  Copyright &copy; 2026 <b>Sahil Yadav</b>. All rights reserved.
 </div>
 

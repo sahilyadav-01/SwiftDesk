@@ -7,6 +7,9 @@
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Deterministic>true</Deterministic>
+    <Authors>Sahil Yadav</Authors>
+    <Company>Sahil Yadav</Company>
+    <Copyright>Copyright © 2026 Sahil Yadav. All rights reserved.</Copyright>
   </PropertyGroup>
 </Project>
 
