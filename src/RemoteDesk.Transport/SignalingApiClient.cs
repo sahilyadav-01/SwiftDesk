@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Net.WebSockets;
+using System.Text.Json;
 using RemoteDesk.Protocol;
 
 namespace RemoteDesk.Transport;
@@ -195,7 +196,20 @@ public sealed class SignalingApiClient(HttpClient httpClient)
             return;
         }
 
-        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>(ProtocolJson.Options, cancellationToken);
+        ErrorResponse? error = null;
+        var payload = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (!string.IsNullOrWhiteSpace(payload))
+        {
+            try
+            {
+                error = JsonSerializer.Deserialize<ErrorResponse>(payload, ProtocolJson.Options);
+            }
+            catch (JsonException)
+            {
+                // Proxies and bare endpoints can return empty or non-JSON error bodies.
+            }
+        }
+
         throw new SignalingApiException(
             response.StatusCode,
             error?.Message ?? $"Signaling request failed with HTTP {(int)response.StatusCode}.");
