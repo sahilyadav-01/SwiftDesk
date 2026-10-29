@@ -25,7 +25,11 @@ internal sealed class MainWindow : Window, IAsyncDisposable
     {
         Text = Environment.GetEnvironmentVariable("REMOTEDESK_SERVER") ?? "http://localhost:5080",
     };
-    private readonly TextBox _operatorKey = new() { Text = "local-operator-change-me", PasswordChar = '●' };
+    private readonly TextBox _operatorKey = new()
+    {
+        Text = Environment.GetEnvironmentVariable("REMOTEDESK_OPERATOR_KEY") ?? "local-operator-change-me",
+        PasswordChar = '●',
+    };
     private readonly TextBox _operatorName = new() { Text = Environment.UserName };
     private readonly TextBox _deviceId = new()
     {
