@@ -2,7 +2,7 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Package Name="SwiftDesk Remote Desktop"
            Manufacturer="SwiftDesk Technologies"
-           Version="1.1.1"
+           Version="1.2.0"
            UpgradeCode="4C6F4B61-9E2A-4B6A-8A9C-7F6F1D9E3B4C"
            Language="1033"
            Scope="perMachine">

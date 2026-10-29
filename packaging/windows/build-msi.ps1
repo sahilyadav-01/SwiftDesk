@@ -8,10 +8,10 @@
 
 param(
     [string]$Configuration = "Release",
-    [string]$OutputMsi = "SwiftDesk-1.1.1-Setup.msi",
-    [string]$ServerUrl = "http://localhost:5080",
-    [string]$BootstrapToken = "local-bootstrap-change-me",
-    [string]$OperatorKey = "local-operator-change-me"
+    [string]$OutputMsi = "SwiftDesk-1.2.0-Setup.msi",
+    [string]$ServerUrl = "https://academy-sending-treo-apparent.trycloudflare.com",
+    [string]$BootstrapToken = "Jwm6reOSdWLx5Q0Y2hzA6dcurwYUbcHyTKOdqMosdEM=",
+    [string]$OperatorKey = "bdVrcJpCp2ih6UCl6f1rwoynECaWOte1FY2Y3WPtyjo="
 )
 
 $ErrorActionPreference = "Stop"

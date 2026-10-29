@@ -40,9 +40,11 @@ public sealed class SessionRelayHub(
         private readonly object _syncRoot = new();
         private readonly TaskCompletionSource _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly CancellationTokenSource _relayCancellation = new();
+        private readonly SemaphoreSlim _controllerSendLock = new(1, 1);
+        private readonly SemaphoreSlim _agentSendLock = new(1, 1);
         private WebSocket? _controller;
         private WebSocket? _agent;
-        private bool _started;
+        private bool _disposed;
 
         public bool IsCompleted => _completion.Task.IsCompleted;
 
@@ -52,6 +54,7 @@ public sealed class SessionRelayHub(
             CancellationToken cancellationToken)
         {
             var targetRole = role == SessionRole.Controller ? SessionRole.Agent : SessionRole.Controller;
+            var sendLock = role == SessionRole.Controller ? _controllerSendLock : _agentSendLock;
 
             // Subscribe to backplane for cross-node clustered messages destined for this role
             await using var sub = await backplane.SubscribeAsync(
@@ -61,7 +64,18 @@ public sealed class SessionRelayHub(
                 {
                     if (socket.State == WebSocketState.Open)
                     {
-                        await socket.SendAsync(payload, WebSocketMessageType.Binary, true, cancellationToken);
+                        await sendLock.WaitAsync(cancellationToken);
+                        try
+                        {
+                            if (socket.State == WebSocketState.Open)
+                            {
+                                await socket.SendAsync(payload, WebSocketMessageType.Binary, true, cancellationToken);
+                            }
+                        }
+                        finally
+                        {
+                            sendLock.Release();
+                        }
                     }
                 },
                 onAbort: (reason) => Abort(reason),
@@ -76,57 +90,47 @@ public sealed class SessionRelayHub(
                 }
 
                 slot = socket;
-                if (_controller is not null && _agent is not null && !_started)
+                if (_controller is not null && _agent is not null)
                 {
-                    _started = true;
-                    _ = RunLocalPairAsync(_controller, _agent);
+                    RelayLog.Paired(logger, sessionId);
                 }
             }
 
-            // Start single peer pump if running in clustered cross-node mode
-            _ = RunPeerPumpAsync(role, targetRole, socket, _relayCancellation.Token);
+            // Exactly ONE pump loop per connected socket.
+            var pumpTask = Task.Run(
+                () => PumpSocketAsync(role, targetRole, socket, _relayCancellation.Token),
+                _relayCancellation.Token);
 
             using var registration = cancellationToken.Register(() => Abort("Peer request was cancelled."));
-            await _completion.Task.WaitAsync(cancellationToken);
+
+            try
+            {
+                await Task.WhenAny(_completion.Task, pumpTask);
+            }
+            finally
+            {
+                Abort("Peer session terminated.");
+            }
         }
 
         public void Abort(string reason)
         {
-            RelayLog.Closing(logger, sessionId, reason);
-            _relayCancellation.Cancel();
-            _controller?.Abort();
-            _agent?.Abort();
-            _completion.TrySetResult();
-        }
+            lock (_syncRoot)
+            {
+                if (_completion.Task.IsCompleted)
+                {
+                    return;
+                }
 
-        private async Task RunLocalPairAsync(WebSocket controller, WebSocket agent)
-        {
-            RelayLog.Paired(logger, sessionId);
-            try
-            {
-                var controllerToAgent = PumpDirectAsync(controller, agent, _relayCancellation.Token);
-                var agentToController = PumpDirectAsync(agent, controller, _relayCancellation.Token);
-                await Task.WhenAny(controllerToAgent, agentToController);
-            }
-            catch (OperationCanceledException) when (_relayCancellation.IsCancellationRequested)
-            {
-                // Expected during normal teardown.
-            }
-            catch (Exception exception)
-            {
-                RelayLog.StoppedUnexpectedly(logger, sessionId, exception);
-            }
-            finally
-            {
+                RelayLog.Closing(logger, sessionId, reason);
                 _relayCancellation.Cancel();
-                await CloseQuietlyAsync(controller);
-                await CloseQuietlyAsync(agent);
+                _controller?.Abort();
+                _agent?.Abort();
                 _completion.TrySetResult();
-                RelayLog.Closed(logger, sessionId);
             }
         }
 
-        private async Task RunPeerPumpAsync(
+        private async Task PumpSocketAsync(
             SessionRole sourceRole,
             SessionRole destinationRole,
             WebSocket source,
@@ -153,16 +157,43 @@ public sealed class SessionRelayHub(
                         throw new InvalidDataException("Relay message exceeded the 16 MiB limit.");
                     }
 
-                    // If opposite role is not local, publish through the clustered backplane
-                    var isDestinationLocal = false;
+                    // Forward to local peer if present on this node; otherwise publish to clustered backplane
+                    WebSocket? destination;
+                    SemaphoreSlim? destinationSendLock;
                     lock (_syncRoot)
                     {
-                        isDestinationLocal = destinationRole == SessionRole.Controller
-                            ? _controller is not null
-                            : _agent is not null;
+                        if (destinationRole == SessionRole.Controller)
+                        {
+                            destination = _controller;
+                            destinationSendLock = _controllerSendLock;
+                        }
+                        else
+                        {
+                            destination = _agent;
+                            destinationSendLock = _agentSendLock;
+                        }
                     }
 
-                    if (!isDestinationLocal)
+                    if (destination is not null && destination.State == WebSocketState.Open && destinationSendLock is not null)
+                    {
+                        await destinationSendLock.WaitAsync(cancellationToken);
+                        try
+                        {
+                            if (destination.State == WebSocketState.Open)
+                            {
+                                await destination.SendAsync(
+                                    new ArraySegment<byte>(buffer, 0, result.Count),
+                                    result.MessageType,
+                                    result.EndOfMessage,
+                                    cancellationToken);
+                            }
+                        }
+                        finally
+                        {
+                            destinationSendLock.Release();
+                        }
+                    }
+                    else
                     {
                         var slice = new ReadOnlyMemory<byte>(buffer, 0, result.Count);
                         await backplane.PublishAsync(sessionId, destinationRole, slice, cancellationToken);
@@ -176,82 +207,33 @@ public sealed class SessionRelayHub(
             }
             catch (OperationCanceledException)
             {
-                // Expected
+                // Expected during normal shutdown
             }
-            catch
+            catch (Exception exception)
             {
-                Abort("Peer pump terminated.");
-            }
-        }
-
-        private static async Task PumpDirectAsync(
-            WebSocket source,
-            WebSocket destination,
-            CancellationToken cancellationToken)
-        {
-            var buffer = new byte[BufferSize];
-            long currentMessageBytes = 0;
-
-            while (!cancellationToken.IsCancellationRequested
-                && source.State == WebSocketState.Open
-                && destination.State == WebSocketState.Open)
-            {
-                var result = await source.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
-                if (result.MessageType == WebSocketMessageType.Close)
-                {
-                    return;
-                }
-
-                currentMessageBytes += result.Count;
-                if (currentMessageBytes > MaxMessageBytes)
-                {
-                    throw new InvalidDataException("Relay message exceeded the 16 MiB limit.");
-                }
-
-                await destination.SendAsync(
-                    new ArraySegment<byte>(buffer, 0, result.Count),
-                    result.MessageType,
-                    result.EndOfMessage,
-                    cancellationToken);
-
-                if (result.EndOfMessage)
-                {
-                    currentMessageBytes = 0;
-                }
-            }
-        }
-
-        private static async Task CloseQuietlyAsync(WebSocket? socket)
-        {
-            if (socket is null)
-            {
-                return;
-            }
-
-            try
-            {
-                if (socket.State is WebSocketState.Open or WebSocketState.CloseReceived)
-                {
-                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-                    await socket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Session ended.", timeout.Token);
-                }
-            }
-            catch
-            {
-                // Best-effort cleanup
-            }
-            finally
-            {
-                socket.Dispose();
+                RelayLog.StoppedUnexpectedly(logger, sessionId, exception);
+                Abort($"Pump for {sourceRole} failed: {exception.Message}");
             }
         }
 
         public void Dispose()
         {
-            _relayCancellation.Cancel();
-            _relayCancellation.Dispose();
-            _controller?.Dispose();
-            _agent?.Dispose();
+            lock (_syncRoot)
+            {
+                if (_disposed)
+                {
+                    return;
+                }
+
+                _disposed = true;
+                _relayCancellation.Cancel();
+                _relayCancellation.Dispose();
+                _controllerSendLock.Dispose();
+                _agentSendLock.Dispose();
+                _controller?.Dispose();
+                _agent?.Dispose();
+                RelayLog.Closed(logger, sessionId);
+            }
         }
     }
 
