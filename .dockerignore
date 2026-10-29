@@ -1,0 +1,15 @@
+**/bin
+**/obj
+**/TestResults
+**/work
+**/.vs
+**/.vscode
+**/.idea
+**/node_modules
+packaging/
+docs/
+*.msi
+*.md
+.git
+.gitignore
+.editorconfig
