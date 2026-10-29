@@ -1,6 +1,8 @@
 <div align="center">
 
-# SwiftDesk
+<img src="docs/assets/logo.png" alt="SwiftDesk Logo" width="420" />
+
+<br />
 
 **Enterprise-Grade, Cross-Platform Remote Support & Desktop Control**
 

@@ -29,11 +29,15 @@ if (-not (Test-Path $DotnetPath)) { $DotnetPath = "dotnet" }
 & $DotnetPath publish (Join-Path $RepoRoot "src\RemoteDesk.Agent\RemoteDesk.Agent.csproj") -c $Configuration -r win-x64 --self-contained true -o $PublishDir
 & $DotnetPath publish (Join-Path $RepoRoot "src\RemoteDesk.PrivilegedHelper\RemoteDesk.PrivilegedHelper.csproj") -c $Configuration -r win-x64 --self-contained true -o $PublishDir
 
-Write-Host "==> Creating SwiftDesk.exe launcher alias..." -ForegroundColor Cyan
+Write-Host "==> Creating SwiftDesk.exe launcher alias and branding assets..." -ForegroundColor Cyan
 Copy-Item (Join-Path $PublishDir "RemoteDesk.Client.exe") (Join-Path $PublishDir "SwiftDesk.exe") -Force
 Copy-Item (Join-Path $PublishDir "RemoteDesk.Client.dll") (Join-Path $PublishDir "SwiftDesk.dll") -Force
 Copy-Item (Join-Path $PublishDir "RemoteDesk.Client.runtimeconfig.json") (Join-Path $PublishDir "SwiftDesk.runtimeconfig.json") -Force
 Copy-Item (Join-Path $PublishDir "RemoteDesk.Client.deps.json") (Join-Path $PublishDir "SwiftDesk.deps.json") -Force
+Copy-Item (Join-Path $PSScriptRoot "SwiftDesk.ico") (Join-Path $PublishDir "SwiftDesk.ico") -Force
+$AssetsDir = Join-Path $PublishDir "Assets"
+if (-not (Test-Path $AssetsDir)) { New-Item -ItemType Directory -Path $AssetsDir -Force | Out-Null }
+Copy-Item (Join-Path $RepoRoot "docs\assets\logo.png") (Join-Path $AssetsDir "logo.png") -Force
 
 Write-Host "==> Generating machine reboot secret key template..." -ForegroundColor Cyan
 $Rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()

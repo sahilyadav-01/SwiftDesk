@@ -124,6 +124,12 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         MinHeight = 680;
         Background = PageBrush;
 
+        var logoBitmap = LoadLogoBitmap();
+        if (logoBitmap is not null)
+        {
+            Icon = new WindowIcon(logoBitmap);
+        }
+
         StyleTextBox(_server);
         StyleTextBox(_operatorKey);
         StyleTextBox(_operatorName);
@@ -403,15 +409,29 @@ internal sealed class MainWindow : Window, IAsyncDisposable
             },
             ColumnSpacing = 14,
         };
-        viewerToolbar.Children.Add(new TextBlock
+        if (logoBitmap is not null)
         {
-            Text = "SwiftDesk",
-            Margin = new Thickness(18, 0, 0, 0),
-            FontSize = 18,
-            FontWeight = FontWeight.Bold,
-            Foreground = AccentBrush,
-            VerticalAlignment = VerticalAlignment.Center,
-        });
+            viewerToolbar.Children.Add(new Image
+            {
+                Source = logoBitmap,
+                Height = 30,
+                Margin = new Thickness(16, 0, 0, 0),
+                Stretch = Stretch.Uniform,
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+        }
+        else
+        {
+            viewerToolbar.Children.Add(new TextBlock
+            {
+                Text = "SwiftDesk",
+                Margin = new Thickness(18, 0, 0, 0),
+                FontSize = 18,
+                FontWeight = FontWeight.Bold,
+                Foreground = AccentBrush,
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+        }
 
         var toolbarDivider = new Border
         {
@@ -519,46 +539,62 @@ internal sealed class MainWindow : Window, IAsyncDisposable
                 new ColumnDefinition(GridLength.Auto),
             },
         };
-        headerGrid.Children.Add(new Border
+        if (logoBitmap is not null)
         {
-            Width = 40,
-            Height = 40,
-            Background = AccentBrush,
-            CornerRadius = new CornerRadius(11),
-            Child = new TextBlock
+            var headerLogo = new Image
             {
-                Text = "S",
-                FontSize = 22,
-                FontWeight = FontWeight.Bold,
-                Foreground = Brushes.White,
-                HorizontalAlignment = HorizontalAlignment.Center,
+                Source = logoBitmap,
+                Height = 44,
+                Stretch = Stretch.Uniform,
+                HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Center,
-            },
-        });
-
-        var brand = new StackPanel
+            };
+            Grid.SetColumn(headerLogo, 0);
+            headerGrid.Children.Add(headerLogo);
+        }
+        else
         {
-            Margin = new Thickness(12, 0, 0, 0),
-            VerticalAlignment = VerticalAlignment.Center,
-            Children =
+            headerGrid.Children.Add(new Border
             {
-                new TextBlock
+                Width = 40,
+                Height = 40,
+                Background = AccentBrush,
+                CornerRadius = new CornerRadius(11),
+                Child = new TextBlock
                 {
-                    Text = "SwiftDesk",
-                    FontSize = 20,
+                    Text = "S",
+                    FontSize = 22,
                     FontWeight = FontWeight.Bold,
-                    Foreground = PrimaryTextBrush,
+                    Foreground = Brushes.White,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
                 },
-                new TextBlock
+            });
+
+            var brand = new StackPanel
+            {
+                Margin = new Thickness(12, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Children =
                 {
-                    Text = "Fast, consent-first remote support",
-                    FontSize = 12,
-                    Foreground = SecondaryTextBrush,
+                    new TextBlock
+                    {
+                        Text = "SwiftDesk",
+                        FontSize = 20,
+                        FontWeight = FontWeight.Bold,
+                        Foreground = PrimaryTextBrush,
+                    },
+                    new TextBlock
+                    {
+                        Text = "Fast, consent-first remote support",
+                        FontSize = 12,
+                        Foreground = SecondaryTextBrush,
+                    },
                 },
-            },
-        };
-        Grid.SetColumn(brand, 1);
-        headerGrid.Children.Add(brand);
+            };
+            Grid.SetColumn(brand, 1);
+            headerGrid.Children.Add(brand);
+        }
 
         var securityLabel = new Border
         {
@@ -1247,5 +1283,34 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         button.CornerRadius = new CornerRadius(9);
         button.FontWeight = FontWeight.SemiBold;
         button.HorizontalAlignment = HorizontalAlignment.Stretch;
+    }
+
+    private static Bitmap? LoadLogoBitmap()
+    {
+        try
+        {
+            var baseDir = AppContext.BaseDirectory;
+            var candidates = new[]
+            {
+                Path.Combine(baseDir, "Assets", "logo.png"),
+                Path.Combine(baseDir, "logo.png"),
+                Path.Combine(baseDir, "..", "..", "..", "Assets", "logo.png"),
+                Path.Combine(baseDir, "..", "..", "..", "..", "docs", "assets", "logo.png"),
+            };
+
+            foreach (var candidate in candidates)
+            {
+                if (File.Exists(candidate))
+                {
+                    return new Bitmap(Path.GetFullPath(candidate));
+                }
+            }
+        }
+        catch
+        {
+            // Fallback to text brand
+        }
+
+        return null;
     }
 }
