@@ -13,6 +13,29 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services
     .AddOptions<RemoteDeskServerOptions>()
     .Bind(builder.Configuration.GetSection(RemoteDeskServerOptions.SectionName))
+    .PostConfigure(options =>
+    {
+        var envBootstrap = Environment.GetEnvironmentVariable("REMOTEDESK_BOOTSTRAP_TOKEN")
+            ?? Environment.GetEnvironmentVariable("RemoteDesk__BootstrapToken");
+        if (!string.IsNullOrWhiteSpace(envBootstrap))
+        {
+            options.BootstrapToken = envBootstrap;
+        }
+
+        var envOperator = Environment.GetEnvironmentVariable("REMOTEDESK_OPERATOR_KEY")
+            ?? Environment.GetEnvironmentVariable("RemoteDesk__OperatorKey");
+        if (!string.IsNullOrWhiteSpace(envOperator))
+        {
+            options.OperatorKey = envOperator;
+        }
+
+        var envSigning = Environment.GetEnvironmentVariable("REMOTEDESK_SIGNING_KEY")
+            ?? Environment.GetEnvironmentVariable("RemoteDesk__SigningKey");
+        if (!string.IsNullOrWhiteSpace(envSigning))
+        {
+            options.SigningKey = envSigning;
+        }
+    })
     .Validate(options => options.SigningKey.Length >= 32, "SigningKey must contain at least 32 characters.")
     .Validate(options => options.RequestLifetimeMinutes is > 0 and <= 30, "Request lifetime must be 1-30 minutes.")
     .Validate(options => options.TicketLifetimeMinutes is > 0 and <= 60, "Ticket lifetime must be 1-60 minutes.")

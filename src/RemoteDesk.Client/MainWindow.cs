@@ -124,11 +124,13 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         MinHeight = 680;
         Background = PageBrush;
 
-        var logoBitmap = LoadLogoBitmap();
-        if (logoBitmap is not null)
+        var appIconBitmap = LoadAssetBitmap("app-icon.png") ?? LoadAssetBitmap("logo.png");
+        if (appIconBitmap is not null)
         {
-            Icon = new WindowIcon(logoBitmap);
+            Icon = new WindowIcon(appIconBitmap);
         }
+
+        var logoBitmap = LoadAssetBitmap("logo.png");
 
         StyleTextBox(_server);
         StyleTextBox(_operatorKey);
@@ -414,7 +416,7 @@ internal sealed class MainWindow : Window, IAsyncDisposable
             viewerToolbar.Children.Add(new Image
             {
                 Source = logoBitmap,
-                Height = 30,
+                Height = 26,
                 Margin = new Thickness(16, 0, 0, 0),
                 Stretch = Stretch.Uniform,
                 VerticalAlignment = VerticalAlignment.Center,
@@ -544,7 +546,7 @@ internal sealed class MainWindow : Window, IAsyncDisposable
             var headerLogo = new Image
             {
                 Source = logoBitmap,
-                Height = 44,
+                Height = 36,
                 Stretch = Stretch.Uniform,
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Center,
@@ -1285,17 +1287,17 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         button.HorizontalAlignment = HorizontalAlignment.Stretch;
     }
 
-    private static Bitmap? LoadLogoBitmap()
+    private static Bitmap? LoadAssetBitmap(string fileName)
     {
         try
         {
             var baseDir = AppContext.BaseDirectory;
             var candidates = new[]
             {
-                Path.Combine(baseDir, "Assets", "logo.png"),
-                Path.Combine(baseDir, "logo.png"),
-                Path.Combine(baseDir, "..", "..", "..", "Assets", "logo.png"),
-                Path.Combine(baseDir, "..", "..", "..", "..", "docs", "assets", "logo.png"),
+                Path.Combine(baseDir, "Assets", fileName),
+                Path.Combine(baseDir, fileName),
+                Path.Combine(baseDir, "..", "..", "..", "Assets", fileName),
+                Path.Combine(baseDir, "..", "..", "..", "..", "docs", "assets", fileName),
             };
 
             foreach (var candidate in candidates)
