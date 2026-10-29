@@ -9,6 +9,7 @@ using Avalonia.Threading;
 using RemoteDesk.Core;
 using RemoteDesk.Protocol;
 using RemoteDesk.Transport;
+using System.Diagnostics;
 
 namespace RemoteDesk.Client;
 
@@ -23,11 +24,11 @@ internal sealed class MainWindow : Window, IAsyncDisposable
 
     private readonly TextBox _server = new()
     {
-        Text = Environment.GetEnvironmentVariable("REMOTEDESK_SERVER") ?? "http://localhost:5080",
+        Text = ReadConfiguredEnvironmentVariable("REMOTEDESK_SERVER") ?? "http://localhost:5080",
     };
     private readonly TextBox _operatorKey = new()
     {
-        Text = Environment.GetEnvironmentVariable("REMOTEDESK_OPERATOR_KEY") ?? "local-operator-change-me",
+        Text = ReadConfiguredEnvironmentVariable("REMOTEDESK_OPERATOR_KEY") ?? "local-operator-change-me",
         PasswordChar = '●',
     };
     private readonly TextBox _operatorName = new() { Text = Environment.UserName };
@@ -86,6 +87,7 @@ internal sealed class MainWindow : Window, IAsyncDisposable
 
     private readonly Border _screenContainer;
     private readonly CancellationTokenSource _shutdown = new();
+    private readonly DispatcherTimer _deviceIdRefreshTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private HttpClient? _httpClient;
     private ClientSession? _session;
     private int _disposed;
@@ -474,6 +476,9 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         Activated += (_, _) => RefreshLocalDeviceId();
         Closed += WindowClosed;
 
+        _deviceIdRefreshTimer.Tick += (_, _) => RefreshLocalDeviceId();
+        _deviceIdRefreshTimer.Start();
+        EnsureInstalledAgentIsRunning();
         RefreshLocalDeviceId();
     }
 
@@ -713,7 +718,7 @@ internal sealed class MainWindow : Window, IAsyncDisposable
 
     private static string? GetLocalDeviceId()
     {
-        var configuredId = Environment.GetEnvironmentVariable("REMOTEDESK_DEVICE_ID");
+        var configuredId = ReadConfiguredEnvironmentVariable("REMOTEDESK_DEVICE_ID");
         if (!string.IsNullOrWhiteSpace(configuredId))
         {
             return configuredId.Trim();
@@ -722,8 +727,49 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         return DeviceIdentityStore.Load()?.DeviceId;
     }
 
+    private static string? ReadConfiguredEnvironmentVariable(string name) =>
+        Environment.GetEnvironmentVariable(name)
+        ?? Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User)
+        ?? Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Machine);
+
+    private static void EnsureInstalledAgentIsRunning()
+    {
+        try
+        {
+            if (Process.GetProcessesByName("RemoteDesk.Agent").Length > 0)
+            {
+                return;
+            }
+
+            var applicationDirectory = Path.GetDirectoryName(Environment.ProcessPath);
+            if (string.IsNullOrWhiteSpace(applicationDirectory))
+            {
+                return;
+            }
+
+            var agentPath = Path.Combine(applicationDirectory, "RemoteDesk.Agent.exe");
+            if (!File.Exists(agentPath))
+            {
+                return;
+            }
+
+            Process.Start(new ProcessStartInfo(agentPath)
+            {
+                UseShellExecute = true,
+                WorkingDirectory = applicationDirectory,
+            });
+        }
+        catch (Exception exception) when (exception is InvalidOperationException
+            or System.ComponentModel.Win32Exception
+            or NotSupportedException)
+        {
+            // The Agent can still be started manually from the Start menu.
+        }
+    }
+
     private async void WindowClosed(object? sender, EventArgs eventArgs)
     {
+        _deviceIdRefreshTimer.Stop();
         await DisposeAsync();
     }
 

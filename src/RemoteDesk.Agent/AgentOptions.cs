@@ -54,6 +54,8 @@ internal sealed record AgentOptions(
         string argumentName,
         string environmentName) =>
         values.GetValueOrDefault(argumentName)
-        ?? Environment.GetEnvironmentVariable(environmentName);
+        ?? Environment.GetEnvironmentVariable(environmentName)
+        ?? Environment.GetEnvironmentVariable(environmentName, EnvironmentVariableTarget.User)
+        ?? Environment.GetEnvironmentVariable(environmentName, EnvironmentVariableTarget.Machine);
 }
 

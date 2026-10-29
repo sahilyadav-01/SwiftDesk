@@ -71,7 +71,7 @@ public sealed class PostgresDeviceStore(NpgsqlDataSource dataSource, TimeProvide
 
         for (var attempt = 0; attempt < 5; attempt++)
         {
-            var id = $"dev_{Guid.NewGuid():N}";
+            var id = DeviceIdGenerator.Create();
             const string sql = """
                 INSERT INTO devices (device_id, name, platform, secret_hash, enrolled_at)
                 VALUES ($1, $2, $3, $4, $5)

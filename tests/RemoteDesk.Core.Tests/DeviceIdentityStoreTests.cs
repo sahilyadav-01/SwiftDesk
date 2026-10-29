@@ -10,7 +10,7 @@ public sealed class DeviceIdentityStoreTests
     {
         var directory = Path.Combine(Path.GetTempPath(), $"swiftdesk-identity-{Guid.NewGuid():N}");
         var path = Path.Combine(directory, "device-identity.json");
-        var expected = new LocalDeviceIdentity("dev_0123456789abcdef", "secret-value");
+        var expected = new LocalDeviceIdentity("012345678901", "secret-value");
 
         try
         {

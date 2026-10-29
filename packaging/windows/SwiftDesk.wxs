@@ -2,7 +2,7 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Package Name="SwiftDesk Remote Desktop"
            Manufacturer="SwiftDesk Technologies"
-           Version="1.0.0"
+           Version="1.0.1"
            UpgradeCode="4C6F4B61-9E2A-4B6A-8A9C-7F6F1D9E3B4C"
            Language="1033"
            Scope="perMachine">
@@ -30,6 +30,32 @@
               Stop="both"
               Remove="uninstall"
               Wait="yes" />
+        </Component>
+        <Component Id="RuntimeConfiguration" Guid="B2C3D4E5-F607-4819-A0B1-C2D3E4F50617">
+          <Environment Id="SwiftDeskServerEnvironment"
+                       Name="REMOTEDESK_SERVER"
+                       Value="$(var.ServerUrl)"
+                       Action="set"
+                       Part="all"
+                       System="yes" />
+          <Environment Id="SwiftDeskBootstrapEnvironment"
+                       Name="REMOTEDESK_BOOTSTRAP_TOKEN"
+                       Value="$(var.BootstrapToken)"
+                       Action="set"
+                       Part="all"
+                       System="yes" />
+          <Environment Id="SwiftDeskOperatorEnvironment"
+                       Name="REMOTEDESK_OPERATOR_KEY"
+                       Value="$(var.OperatorKey)"
+                       Action="set"
+                       Part="all"
+                       System="yes" />
+          <RegistryValue Root="HKLM"
+                         Key="Software\SwiftDesk"
+                         Name="runtimeConfiguration"
+                         Type="integer"
+                         Value="1"
+                         KeyPath="yes" />
         </Component>
       </Directory>
     </StandardDirectory>
@@ -84,12 +110,30 @@
       </Component>
     </StandardDirectory>
 
+    <StandardDirectory Id="StartupFolder">
+      <Component Id="AgentStartupShortcut" Guid="C3D4E5F6-0718-492A-B1C2-D3E4F5061728">
+        <Shortcut Id="AgentStartupShortcutLink"
+                  Name="SwiftDesk Agent"
+                  Description="Starts the SwiftDesk remote support Agent"
+                  Target="[INSTALLFOLDER]RemoteDesk.Agent.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\SwiftDesk"
+                       Name="agentStartupShortcut"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
     <Feature Id="MainApplication" Title="SwiftDesk Core" Level="1">
       <ComponentGroupRef Id="ProductComponents" />
       <ComponentRef Id="PrivilegedHelperService" />
+      <ComponentRef Id="RuntimeConfiguration" />
       <ComponentRef Id="MachineSecretDirectory" />
       <ComponentRef Id="ApplicationShortcut" />
       <ComponentRef Id="DesktopShortcutComponent" />
+      <ComponentRef Id="AgentStartupShortcut" />
     </Feature>
   </Package>
 </Wix>

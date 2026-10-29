@@ -15,7 +15,8 @@ public sealed class PersistenceTests
         var devices = new DeviceRegistry(TimeProvider.System);
         var enrolled = await devices.EnrollAsync("TestHost", "Windows", ct);
 
-        Assert.StartsWith("dev_", enrolled.DeviceId);
+        Assert.Equal(12, enrolled.DeviceId.Length);
+        Assert.All(enrolled.DeviceId, character => Assert.True(char.IsAsciiDigit(character)));
         Assert.True(await devices.ExistsAsync(enrolled.DeviceId, ct));
         Assert.True(await devices.AuthenticateAsync(enrolled.DeviceId, enrolled.DeviceSecret, ct));
         Assert.False(await devices.AuthenticateAsync(enrolled.DeviceId, "wrong-secret", ct));

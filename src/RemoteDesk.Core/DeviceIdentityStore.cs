@@ -84,8 +84,8 @@ public static class DeviceIdentityStore
 
     private static bool IsValid(LocalDeviceIdentity? identity) =>
         identity is not null
-        && identity.DeviceId.StartsWith("dev_", StringComparison.Ordinal)
-        && identity.DeviceId.Length <= 64
+        && identity.DeviceId.Length == 12
+        && identity.DeviceId.All(char.IsAsciiDigit)
         && !string.IsNullOrWhiteSpace(identity.DeviceSecret);
 
     private static void RestrictToCurrentUser(string path)

@@ -43,7 +43,7 @@ public sealed class DeviceRegistry(TimeProvider timeProvider) : IDeviceStore
         var secret = SecretHasher.CreateSecret();
         for (var attempt = 0; attempt < 5; attempt++)
         {
-            var id = $"dev_{Guid.NewGuid():N}";
+            var id = DeviceIdGenerator.Create();
             var record = new DeviceRecord(
                 id,
                 name,

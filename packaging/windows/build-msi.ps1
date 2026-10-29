@@ -8,7 +8,10 @@
 
 param(
     [string]$Configuration = "Release",
-    [string]$OutputMsi = "SwiftDesk-1.0.0-Setup.msi"
+    [string]$OutputMsi = "SwiftDesk-1.0.1-Setup.msi",
+    [string]$ServerUrl = "http://localhost:5080",
+    [string]$BootstrapToken = "local-bootstrap-change-me",
+    [string]$OperatorKey = "local-operator-change-me"
 )
 
 $ErrorActionPreference = "Stop"
@@ -42,11 +45,16 @@ $SampleKeyPath = Join-Path $PublishDir "reboot.key.sample"
 Write-Host "==> Compiling WiX MSI installer..." -ForegroundColor Cyan
 $WixFile = Join-Path $PSScriptRoot "SwiftDesk.wxs"
 $MsiDestination = Join-Path $PSScriptRoot $OutputMsi
+$WixDefines = @(
+    "-d", "ServerUrl=$ServerUrl",
+    "-d", "BootstrapToken=$BootstrapToken",
+    "-d", "OperatorKey=$OperatorKey"
+)
 
 if (Get-Command "wix" -ErrorAction SilentlyContinue) {
-    & wix build $WixFile -arch x64 -b PublishDir=$PublishDir -o $MsiDestination
+    & wix build $WixFile -arch x64 -b PublishDir=$PublishDir @WixDefines -o $MsiDestination
 } elseif (Test-Path $DotnetPath) {
-    & $DotnetPath tool run wix build $WixFile -arch x64 -b PublishDir=$PublishDir -o $MsiDestination
+    & $DotnetPath tool run wix build $WixFile -arch x64 -b PublishDir=$PublishDir @WixDefines -o $MsiDestination
 } else {
     throw "WiX CLI not found. Packaged publish directory prepared at: $PublishDir"
 }
