@@ -38,6 +38,8 @@ Copy-Item (Join-Path $PSScriptRoot "SwiftDesk.ico") (Join-Path $PublishDir "Swif
 $AssetsDir = Join-Path $PublishDir "Assets"
 if (-not (Test-Path $AssetsDir)) { New-Item -ItemType Directory -Path $AssetsDir -Force | Out-Null }
 Copy-Item (Join-Path $RepoRoot "docs\assets\logo.png") (Join-Path $AssetsDir "logo.png") -Force
+Copy-Item (Join-Path $RepoRoot "src\RemoteDesk.Client\Assets\app-icon.png") (Join-Path $AssetsDir "app-icon.png") -Force
+Copy-Item (Join-Path $PSScriptRoot "SwiftDesk.ico") (Join-Path $AssetsDir "SwiftDesk.ico") -Force
 
 Write-Host "==> Generating machine reboot secret key template..." -ForegroundColor Cyan
 $Rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
