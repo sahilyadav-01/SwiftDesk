@@ -6,6 +6,7 @@ namespace RemoteDesk.Transport;
 public sealed class RtcPeerCoordinator : IAsyncDisposable
 {
     private readonly RTCPeerConnection _peerConnection;
+    private readonly DataChannelMessageFramer _messageFramer = new();
     private RTCDataChannel? _dataChannel;
     private readonly TaskCompletionSource<bool> _dataChannelReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -70,9 +71,11 @@ public sealed class RtcPeerCoordinator : IAsyncDisposable
 
         channel.onmessage += (_, _, data) =>
         {
-            if (data is { Length: > 0 })
+            if (data is { Length: > 0 }
+                && _messageFramer.TryDecode(data, out var message)
+                && message is { Length: > 0 })
             {
-                OnBinaryDataReceived?.Invoke(data);
+                OnBinaryDataReceived?.Invoke(message);
             }
         };
     }
@@ -123,7 +126,11 @@ public sealed class RtcPeerCoordinator : IAsyncDisposable
     {
         if (_dataChannel?.readyState == RTCDataChannelState.open)
         {
-            _dataChannel.send(data);
+            foreach (var packet in _messageFramer.Encode(data))
+            {
+                _dataChannel.send(packet);
+            }
+
             return true;
         }
 

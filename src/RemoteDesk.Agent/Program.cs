@@ -131,15 +131,9 @@ try
                 && request.RequestedPermissions == SessionPermission.TransferFiles
                 && grantable == SessionPermission.TransferFiles;
 
-            if (!approve && !Console.IsInputRedirected)
+            if (!approve)
             {
-                Console.WriteLine();
-                Console.WriteLine($"Connection request {request.SessionId}");
-                Console.WriteLine($"Operator: {request.OperatorName}");
-                Console.WriteLine($"Requested: {request.RequestedPermissions}");
-                Console.WriteLine($"Grantable: {grantable}");
-                Console.Write("Approve grantable permissions? [y/N] ");
-                approve = string.Equals(Console.ReadLine()?.Trim(), "y", StringComparison.OrdinalIgnoreCase);
+                approve = UserConsentPrompt.Request(request, grantable);
             }
 
             approve &= grantable != SessionPermission.None;

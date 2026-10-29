@@ -15,6 +15,7 @@ internal sealed class AgentSession(
 {
     private readonly ConcurrentDictionary<string, SafeFileReceiver> _transfers = new(StringComparer.Ordinal);
     private readonly SemaphoreSlim _sendLock = new(1, 1);
+    private readonly DataChannelMessageFramer _relayFrameFramer = new();
     private long _sequence;
     private RtcPeerCoordinator? _rtc;
     private CancellationTokenSource? _sessionCts;
@@ -108,18 +109,11 @@ internal sealed class AgentSession(
                     continue;
                 }
 
-                // Fallback to relay message if frame fits within control limits
-                if (frameBytes.Length <= 45 * 1024)
+                // Reliable WebSocket relay fallback for networks where direct WebRTC cannot connect.
+                foreach (var packet in _relayFrameFramer.Encode(frameBytes, 36 * 1024))
                 {
-                    var msg = new ScreenFrameMessage(
-                        frame.Sequence,
-                        frame.Width,
-                        frame.Height,
-                        frame.PixelFormat,
-                        Convert.ToBase64String(frameBytes),
-                        frame.CapturedAt.ToUnixTimeMilliseconds());
-
-                    await SendEnvelopeAsync(socket, ControlMessageKind.ScreenFrame, msg, cancellationToken);
+                    var message = new ScreenFrameChunkMessage(Convert.ToBase64String(packet));
+                    await SendEnvelopeAsync(socket, ControlMessageKind.ScreenFrameChunk, message, cancellationToken);
                 }
             }
         }

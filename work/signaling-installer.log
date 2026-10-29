@@ -7,3 +7,19 @@ info: Microsoft.Hosting.Lifetime[0]
       Hosting environment: Development
 info: Microsoft.Hosting.Lifetime[0]
       Content root path: C:\Users\sahil yadav\Desktop\SwiftDesk\src\RemoteDesk.Signaling
+info: RemoteDesk.Signaling.SessionRelayHub[1]
+      Session relay paired for 'ses_4e913a176c1f448e87b2e9b292e0d757'.
+info: RemoteDesk.Signaling.SessionRelayHub[3]
+      Session relay closed for 'ses_4e913a176c1f448e87b2e9b292e0d757'.
+info: RemoteDesk.Signaling.SessionRelayHub[1]
+      Session relay paired for 'ses_2926a563e7fd487ead88074873065622'.
+info: RemoteDesk.Signaling.SessionRelayHub[3]
+      Session relay closed for 'ses_2926a563e7fd487ead88074873065622'.
+info: RemoteDesk.Signaling.SessionRelayHub[2]
+      Closing session relay for 'ses_2926a563e7fd487ead88074873065622': Peer pump terminated.
+info: RemoteDesk.Signaling.SessionRelayHub[1]
+      Session relay paired for 'ses_16d3004d85d34efb996205ba825b9fac'.
+info: RemoteDesk.Signaling.SessionRelayHub[2]
+      Closing session relay for 'ses_16d3004d85d34efb996205ba825b9fac': Peer pump terminated.
+info: RemoteDesk.Signaling.SessionRelayHub[3]
+      Session relay closed for 'ses_16d3004d85d34efb996205ba825b9fac'.

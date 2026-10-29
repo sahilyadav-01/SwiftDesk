@@ -12,6 +12,7 @@ internal sealed class ClientSession(
     ClientWebSocket socket) : IAsyncDisposable
 {
     private readonly SemaphoreSlim _sendLock = new(1, 1);
+    private readonly DataChannelMessageFramer _relayFrameFramer = new();
     private long _sequence;
     private RtcPeerCoordinator? _rtc;
     private CancellationTokenSource? _sessionCts;
@@ -94,6 +95,24 @@ internal sealed class ClientSession(
                         var frameMsg = ProtocolJson.Deserialize<ScreenFrameMessage>(envelope.PayloadJson);
                         var bytes = Convert.FromBase64String(frameMsg.Base64Data);
                         OnFrameReceived?.Invoke(bytes);
+                        break;
+                    }
+
+                    case ControlMessageKind.ScreenFrameChunk:
+                    {
+                        var chunkMessage = ProtocolJson.Deserialize<ScreenFrameChunkMessage>(envelope.PayloadJson);
+                        var packet = Convert.FromBase64String(chunkMessage.Base64Packet);
+                        if (packet.Length > 40 * 1024)
+                        {
+                            throw new InvalidDataException("Relayed screen chunk exceeds the size limit.");
+                        }
+
+                        if (_relayFrameFramer.TryDecode(packet, out var frameBytes)
+                            && frameBytes is { Length: > 0 })
+                        {
+                            OnFrameReceived?.Invoke(frameBytes);
+                        }
+
                         break;
                     }
                 }

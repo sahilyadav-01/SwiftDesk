@@ -8,7 +8,7 @@
 
 param(
     [string]$Configuration = "Release",
-    [string]$OutputMsi = "SwiftDesk-1.0.2-Setup.msi",
+    [string]$OutputMsi = "SwiftDesk-1.1.1-Setup.msi",
     [string]$ServerUrl = "http://localhost:5080",
     [string]$BootstrapToken = "local-bootstrap-change-me",
     [string]$OperatorKey = "local-operator-change-me"

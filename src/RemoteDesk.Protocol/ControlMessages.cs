@@ -16,6 +16,7 @@ public enum ControlMessageKind
     RtcAnswer,
     RtcIceCandidate,
     ScreenFrame,
+    ScreenFrameChunk,
     ScreenDimensions,
 }
 
@@ -38,6 +39,8 @@ public sealed record ScreenFrameMessage(
     string PixelFormat,
     string Base64Data,
     long TimestampUnixMs);
+
+public sealed record ScreenFrameChunkMessage(string Base64Packet);
 
 public sealed record PeerReadyMessage(string DeviceId, SessionRole Role);
 

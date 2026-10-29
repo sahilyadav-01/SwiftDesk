@@ -7,6 +7,7 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit.v3" />
     <ProjectReference Include="../../src/RemoteDesk.Protocol/RemoteDesk.Protocol.csproj" />
+    <ProjectReference Include="../../src/RemoteDesk.Transport/RemoteDesk.Transport.csproj" />
   </ItemGroup>
 </Project>
 
