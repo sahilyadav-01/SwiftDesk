@@ -53,7 +53,7 @@ internal sealed class MainWindow : Window, IAsyncDisposable
     private readonly Button _sendFile = new() { Content = "Send file", IsEnabled = false };
     private readonly TextBlock _thisDeviceId = new()
     {
-        Text = "Start the Agent to create an ID",
+        Text = "Creating your SwiftDesk ID…",
         FontSize = 14,
         FontWeight = FontWeight.SemiBold,
         Foreground = PrimaryTextBrush,
@@ -477,9 +477,7 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         Closed += WindowClosed;
 
         _deviceIdRefreshTimer.Tick += (_, _) => RefreshLocalDeviceId();
-        _deviceIdRefreshTimer.Start();
-        EnsureInstalledAgentIsRunning();
-        RefreshLocalDeviceId();
+        _ = InitializeLocalAgentAsync();
     }
 
     private void OnScreenPointerMoved(object? sender, PointerEventArgs e)
@@ -712,7 +710,7 @@ internal sealed class MainWindow : Window, IAsyncDisposable
     private void RefreshLocalDeviceId()
     {
         var deviceId = GetLocalDeviceId();
-        _thisDeviceId.Text = deviceId ?? "Start the Agent to create an ID";
+        _thisDeviceId.Text = deviceId ?? "Creating your SwiftDesk ID…";
         _copyDeviceId.IsEnabled = deviceId is not null;
     }
 
@@ -725,6 +723,65 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         }
 
         return DeviceIdentityStore.Load()?.DeviceId;
+    }
+
+    private async Task InitializeLocalAgentAsync()
+    {
+        if (GetLocalDeviceId() is null)
+        {
+            var serverText = ReadConfiguredEnvironmentVariable("REMOTEDESK_SERVER");
+            var bootstrapToken = ReadConfiguredEnvironmentVariable("REMOTEDESK_BOOTSTRAP_TOKEN");
+            if (!Uri.TryCreate(serverText, UriKind.Absolute, out var server)
+                || server.Scheme is not ("http" or "https")
+                || string.IsNullOrWhiteSpace(bootstrapToken))
+            {
+                _thisDeviceId.Text = "SwiftDesk server configuration is missing.";
+                return;
+            }
+
+            try
+            {
+                using var enrollmentHttpClient = new HttpClient { BaseAddress = server };
+                var enrollmentApi = new SignalingApiClient(enrollmentHttpClient);
+                var enrollment = await enrollmentApi.EnrollAsync(
+                    bootstrapToken,
+                    new DeviceEnrollmentRequest(Environment.MachineName, GetPlatformName()),
+                    _shutdown.Token);
+                DeviceIdentityStore.Save(new LocalDeviceIdentity(enrollment.DeviceId, enrollment.DeviceSecret));
+            }
+            catch (OperationCanceledException) when (_shutdown.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception exception) when (exception is HttpRequestException
+                or SignalingApiException
+                or IOException
+                or UnauthorizedAccessException
+                or ArgumentException)
+            {
+                _thisDeviceId.Text = $"Unable to create ID: {exception.Message}";
+                return;
+            }
+        }
+
+        RefreshLocalDeviceId();
+        EnsureInstalledAgentIsRunning();
+        _deviceIdRefreshTimer.Start();
+    }
+
+    private static string GetPlatformName()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return "Windows";
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            return "macOS";
+        }
+
+        return OperatingSystem.IsLinux() ? "Linux" : "Unknown";
     }
 
     private static string? ReadConfiguredEnvironmentVariable(string name) =>

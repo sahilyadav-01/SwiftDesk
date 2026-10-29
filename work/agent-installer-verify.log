@@ -1,0 +1,8 @@
+Device identity saved for this user: C:\Users\sahil yadav\AppData\Local\SwiftDesk\device-identity.json
+Enrollment succeeded. This device now has a persistent SwiftDesk ID.
+SwiftDesk ID: 750711231180
+RemoteDesk agent 750711231180 on Windows
+Available permissions: ViewScreen, ControlInput
+- Screen capture enabled via desktop surface capture (GDI/Bitmap).
+- Input control enabled via Windows SendInput API.
+- Privileged remote reboot service is not installed or configured on this host.
