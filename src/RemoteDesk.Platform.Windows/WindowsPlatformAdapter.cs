@@ -11,6 +11,12 @@ namespace RemoteDesk.Platform.Windows;
 public sealed partial class WindowsPlatformAdapter(IPrivilegedRebootClient? rebootClient = null) : IRemotePlatformAdapter
 {
     private readonly IPrivilegedRebootClient? _rebootClient = rebootClient;
+    private static readonly ImageCodecInfo? JpegEncoder = ImageCodecInfo.GetImageEncoders()
+        .FirstOrDefault(c => c.FormatID == ImageFormat.Jpeg.Guid);
+    private static readonly EncoderParameters JpegParameters = new(1)
+    {
+        Param = { [0] = new EncoderParameter(Encoder.Quality, 65L) }
+    };
     private const int SM_XVIRTUALSCREEN = 76;
     private const int SM_YVIRTUALSCREEN = 77;
     private const int SM_CXVIRTUALSCREEN = 78;
@@ -172,7 +178,14 @@ public sealed partial class WindowsPlatformAdapter(IPrivilegedRebootClient? rebo
                 }
 
                 using var stream = new MemoryStream();
-                bitmap.Save(stream, ImageFormat.Jpeg);
+                if (JpegEncoder is not null)
+                {
+                    bitmap.Save(stream, JpegEncoder, JpegParameters);
+                }
+                else
+                {
+                    bitmap.Save(stream, ImageFormat.Jpeg);
+                }
                 frame = new ScreenFrame(
                     Interlocked.Increment(ref sequence),
                     width,

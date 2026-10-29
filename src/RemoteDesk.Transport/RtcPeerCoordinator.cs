@@ -126,12 +126,19 @@ public sealed class RtcPeerCoordinator : IAsyncDisposable
     {
         if (_dataChannel?.readyState == RTCDataChannelState.open)
         {
-            foreach (var packet in _messageFramer.Encode(data))
+            try
             {
-                _dataChannel.send(packet);
-            }
+                foreach (var packet in _messageFramer.Encode(data))
+                {
+                    _dataChannel.send(packet);
+                }
 
-            return true;
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         return false;

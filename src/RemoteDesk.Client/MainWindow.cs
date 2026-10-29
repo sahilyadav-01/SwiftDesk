@@ -113,6 +113,8 @@ internal sealed class MainWindow : Window, IAsyncDisposable
     private CancellationTokenSource? _connectionAttemptCts;
     private double _remoteFrameWidth;
     private double _remoteFrameHeight;
+    private byte[]? _latestPendingFrameBytes;
+    private int _isRenderingFrame;
     private int _disposed;
 
     public MainWindow()
@@ -898,11 +900,22 @@ internal sealed class MainWindow : Window, IAsyncDisposable
 
     private void OnRemoteFrameReceived(byte[] frameBytes)
     {
-        Dispatcher.UIThread.Post(() =>
+        Interlocked.Exchange(ref _latestPendingFrameBytes, frameBytes);
+
+        if (Interlocked.CompareExchange(ref _isRenderingFrame, 1, 0) == 0)
         {
-            try
+            Dispatcher.UIThread.Post(RenderPendingFrame, DispatcherPriority.Render);
+        }
+    }
+
+    private void RenderPendingFrame()
+    {
+        try
+        {
+            var latest = Interlocked.Exchange(ref _latestPendingFrameBytes, null);
+            if (latest is not null)
             {
-                using var stream = new MemoryStream(frameBytes);
+                using var stream = new MemoryStream(latest);
                 var bitmap = new Bitmap(stream);
                 var previous = _screenImage.Source as IDisposable;
                 _screenImage.Source = bitmap;
@@ -912,11 +925,20 @@ internal sealed class MainWindow : Window, IAsyncDisposable
                 _screenPlaceholderText.IsVisible = false;
                 _sessionWorkspacePanel.IsVisible = true;
             }
-            catch
+        }
+        catch
+        {
+            // Ignore transient frame decoding errors
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _isRenderingFrame, 0);
+            if (Volatile.Read(ref _latestPendingFrameBytes) is not null
+                && Interlocked.CompareExchange(ref _isRenderingFrame, 1, 0) == 0)
             {
-                // Ignore transient frame decoding errors
+                Dispatcher.UIThread.Post(RenderPendingFrame, DispatcherPriority.Render);
             }
-        });
+        }
     }
 
     private async void DisconnectSessionClickedAsync(object? sender, Avalonia.Interactivity.RoutedEventArgs eventArgs)

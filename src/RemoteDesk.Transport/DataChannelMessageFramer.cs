@@ -6,6 +6,7 @@ public sealed class DataChannelMessageFramer
 {
     private const uint ChunkMagic = 0x53444643;
     private const int HeaderLength = 24;
+    private const int DefaultChunkPayload = 32 * 1024;
     private const int MaximumChunkPayload = 240 * 1024;
     private const int MaximumMessageLength = 16 * 1024 * 1024;
     private const int MaximumPendingMessages = 8;
@@ -15,7 +16,7 @@ public sealed class DataChannelMessageFramer
     private readonly Dictionary<long, PendingMessage> _pendingMessages = [];
     private long _nextMessageId;
 
-    public IReadOnlyList<byte[]> Encode(byte[] message) => Encode(message, MaximumChunkPayload);
+    public IReadOnlyList<byte[]> Encode(byte[] message) => Encode(message, DefaultChunkPayload);
 
     public IReadOnlyList<byte[]> Encode(byte[] message, int maximumChunkPayload)
     {
@@ -74,7 +75,7 @@ public sealed class DataChannelMessageFramer
         var messageLength = BinaryPrimitives.ReadInt32BigEndian(packet.AsSpan(20, 4));
         var maximumChunkCount = (MaximumMessageLength + MaximumChunkPayload - 1) / MaximumChunkPayload;
         if (messageId <= 0
-            || messageLength <= MaximumChunkPayload
+            || messageLength <= 0
             || messageLength > MaximumMessageLength
             || chunkCount <= 1
             || chunkCount > maximumChunkCount

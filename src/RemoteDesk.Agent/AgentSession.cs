@@ -102,18 +102,30 @@ internal sealed class AgentSession(
         {
             await foreach (var frame in platform.CaptureAsync(15, cancellationToken))
             {
-                var frameBytes = frame.Data.ToArray();
-
-                if (_rtc is not null && _rtc.TrySendData(frameBytes))
+                try
                 {
-                    continue;
+                    var frameBytes = frame.Data.ToArray();
+
+                    if (_rtc is not null && _rtc.TrySendData(frameBytes))
+                    {
+                        continue;
+                    }
+
+                    // Reliable WebSocket relay fallback for networks where direct WebRTC cannot connect.
+                    foreach (var packet in _relayFrameFramer.Encode(frameBytes, 36 * 1024))
+                    {
+                        var message = new ScreenFrameChunkMessage(Convert.ToBase64String(packet));
+                        await SendEnvelopeAsync(socket, ControlMessageKind.ScreenFrameChunk, message, cancellationToken);
+                    }
                 }
-
-                // Reliable WebSocket relay fallback for networks where direct WebRTC cannot connect.
-                foreach (var packet in _relayFrameFramer.Encode(frameBytes, 36 * 1024))
+                catch (OperationCanceledException)
                 {
-                    var message = new ScreenFrameChunkMessage(Convert.ToBase64String(packet));
-                    await SendEnvelopeAsync(socket, ControlMessageKind.ScreenFrameChunk, message, cancellationToken);
+                    throw;
+                }
+                catch (Exception exception)
+                {
+                    Console.WriteLine($"Transient error sending frame: {exception.Message}");
+                    await Task.Delay(50, cancellationToken);
                 }
             }
         }
