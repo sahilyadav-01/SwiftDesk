@@ -419,7 +419,9 @@ Pass the generated `https://*.trycloudflare.com` URL as `--server` to the Host A
 
 ---
 
-## Security Invariants
+## Security Invariants & Policy
+
+SwiftDesk follows strict zero-trust and consent-first engineering invariants. For vulnerability reporting procedures and disclosure timelines, see our [Security Policy](SECURITY.md). For complete cryptographic specifications and threat models, review [docs/security.md](docs/security.md).
 
 - **Consent-First**: The host agent requires explicit owner approval for every session. Unattended access is never permitted without explicit authorization.
 - **Least-Privilege Authorization**: Permissions are independently negotiated. The agent rejects ungranted actions even if signaled by the controller.
