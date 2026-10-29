@@ -1,0 +1,8 @@
+The saved ID is not registered on this server. Enrolling this device again…
+Device identity saved for this user: C:\Users\sahil yadav\AppData\Local\SwiftDesk\device-identity.json
+SwiftDesk ID: dev_a4e4a3a536d04c0c8198cc30622a4f61
+RemoteDesk agent dev_a4e4a3a536d04c0c8198cc30622a4f61 on Windows
+Available permissions: ViewScreen, ControlInput
+- Screen capture enabled via desktop surface capture (GDI/Bitmap).
+- Input control enabled via Windows SendInput API.
+- Privileged remote reboot service is not installed or configured on this host.
