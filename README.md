@@ -11,7 +11,7 @@
 [![Avalonia UI](https://img.shields.io/badge/UI-Avalonia%2011-8C52FF?logo=avalonia&logoColor=white)](https://avaloniaui.net/)
 [![Transport](https://img.shields.io/badge/Transport-WebRTC%20%7C%20WebSocket-0052CC)](https://webrtc.org/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-informational)](https://github.com/sahilyadav-01/SwiftDesk)
-[![Tests](https://img.shields.io/badge/Tests-47%20Passed-brightgreen)](https://github.com/sahilyadav-01/SwiftDesk)
+[![Tests](https://img.shields.io/badge/Tests-52%20Passed-brightgreen)](https://github.com/sahilyadav-01/SwiftDesk)
 [![Security](https://img.shields.io/badge/Security-HMAC--SHA256%20%7C%20OIDC%20MFA-critical)](docs/security.md)
 
 SwiftDesk provides secure, owner-consented remote support across Windows, Linux (Wayland & X11), and macOS. Engineered for low latency and enterprise compliance, it features real-time screen sharing, remote mouse and keyboard control, chunked integrity-checked file transfers, attended access consent, cryptographic session tickets, clustered relay fallback, and an isolated privileged remote reboot service.
@@ -45,6 +45,7 @@ SwiftDesk provides secure, owner-consented remote support across Windows, Linux 
   - [macOS Installer Package](#3-macos-installer-pkg--launchd)
 - [Configuration Reference](#configuration-reference)
 - [Production Deployment with Docker](#production-deployment-with-docker)
+- [Cloud Deployment (Railway & Cloudflare Tunnel)](#cloud-deployment-railway--cloudflare-tunnel)
 - [Security Invariants](#security-invariants)
 - [License & Copyright](#license--copyright)
 
@@ -111,6 +112,7 @@ sequenceDiagram
 | **macOS Desktop Capture / Input** | **Implemented** | CoreGraphics desktop capture & Quartz Event Services input injection |
 | **Safe File Transfer** | **Implemented** | Chunked transfer (48 KiB limit), path-traversal protection, and SHA-256 validation |
 | **Avalonia Desktop UI** | **Implemented** | Cross-platform client with real-time viewport, input capture, and file transfer manager |
+| **High-Performance Streaming Engine** | **Implemented** | Non-blocking UI frame conflation, 32 KiB SCTP WebRTC chunking, adaptive 65L GDI+ JPEG compression, zero-freeze architecture |
 | **Privileged Remote Reboot** | **Implemented** | Standalone daemon (`RemoteDesk.PrivilegedHelper`) via local IPC, HMAC validation, and rate limits |
 | **Enterprise Identity & MFA** | **Implemented** | OpenID Connect (OIDC) JWT validation (RS256/HS256), `amr`/`acr` MFA enforcement, and RBAC |
 | **Clustered Relay Backplane** | **Implemented** | Redis Pub/Sub relay backplane enabling horizontal scaling across multiple signaling nodes |
@@ -174,7 +176,7 @@ dotnet restore RemoteDesk.slnx
 # Build the entire solution
 dotnet build RemoteDesk.slnx --no-restore
 
-# Run the complete test suite (47 unit and integration tests)
+# Run the complete test suite (52 unit and integration tests)
 dotnet test RemoteDesk.slnx --no-build --no-restore
 ```
 
@@ -273,17 +275,20 @@ SwiftDesk includes production packaging workflows for Windows, Linux, and macOS,
 The Windows installer compiles via WiX v4 into an enterprise MSI package that installs application binaries, registers the `SwiftDeskPrivilegedHelper` Windows Service, and sets up restricted ACLs on `%ProgramData%\SwiftDesk`.
 
 ```powershell
-# Build the Windows MSI installer
-.\packaging\windows\build-msi.ps1 -Configuration Release
+# Build the Windows MSI installer (pre-configured with your signaling server & keys)
+.\packaging\windows\build-msi.ps1 -Configuration Release `
+  -ServerUrl "https://your-signaling-domain.com" `
+  -BootstrapToken "your-bootstrap-token" `
+  -OperatorKey "your-operator-key"
 
 # Install silently (with automated Windows Service registration)
-msiexec /i .\packaging\windows\SwiftDesk-1.0.0-Setup.msi /qn
+msiexec /i .\packaging\windows\SwiftDesk-1.2.0-Setup.msi /qn
 
 # Verify the Windows Service status
 Get-Service SwiftDeskPrivilegedHelper
 
 # Uninstall
-msiexec /x .\packaging\windows\SwiftDesk-1.0.0-Setup.msi /qn
+msiexec /x .\packaging\windows\SwiftDesk-1.2.0-Setup.msi /qn
 ```
 
 ### 2. Linux Packages (Debian & RPM)
@@ -333,16 +338,18 @@ The signaling service and agents are configured via environment variables or CLI
 
 ### Signaling Service Environment Variables
 
-| Variable | Default | Description |
+Supports both flat standard (`REMOTEDESK_KEY`) and ASP.NET Core hierarchical (`RemoteDesk__Key`) conventions:
+
+| Variable (Flat / Hierarchical) | Default | Description |
 | :--- | :--- | :--- |
-| `RemoteDesk__BootstrapToken` | `local-bootstrap-change-me` | Secret token required for host agents to register their device ID. |
-| `RemoteDesk__OperatorKey` | `local-operator-change-me` | Shared secret key for authenticating operator / controller sessions. |
-| `RemoteDesk__SigningKey` | *(auto-generated)* | 256-bit key used to sign HMAC-SHA256 session tickets. |
-| `RemoteDesk__PostgresConnection` | *(none / in-memory)* | PostgreSQL connection string. Enables persistent relational storage. |
-| `RemoteDesk__RedisConnection` | *(none / local)* | Redis connection string (`host:port`). Enables clustered relay backplane. |
-| `RemoteDesk__OidcIssuer` | *(disabled)* | OpenID Connect authority URL for verifying enterprise JWT tokens. |
-| `RemoteDesk__OidcAudience` | *(disabled)* | Expected audience claim (`aud`) for enterprise JWT validation. |
-| `RemoteDesk__RequireMfa` | `false` | When true, rejects sessions lacking MFA claims (`amr`/`acr`). |
+| `REMOTEDESK_BOOTSTRAP_TOKEN` / `RemoteDesk__BootstrapToken` | `local-bootstrap-change-me` | Secret token required for host agents to enroll their device ID. |
+| `REMOTEDESK_OPERATOR_KEY` / `RemoteDesk__OperatorKey` | `local-operator-change-me` | Shared secret key for authenticating operator / controller sessions. |
+| `REMOTEDESK_SIGNING_KEY` / `RemoteDesk__SigningKey` | *(auto-generated)* | 256-bit key used to sign HMAC-SHA256 session tickets (min 32 chars). |
+| `REMOTEDESK_POSTGRES_CONNECTION` / `RemoteDesk__PostgresConnection` | *(none / in-memory)* | PostgreSQL connection string. Enables persistent relational storage. |
+| `REMOTEDESK_REDIS_CONNECTION` / `RemoteDesk__RedisConnection` | *(none / local)* | Redis connection string (`host:port`). Enables clustered relay backplane. |
+| `REMOTEDESK_OIDC_ISSUER` / `RemoteDesk__OidcIssuer` | *(disabled)* | OpenID Connect authority URL for verifying enterprise JWT tokens. |
+| `REMOTEDESK_OIDC_AUDIENCE` / `RemoteDesk__OidcAudience` | *(disabled)* | Expected audience claim (`aud`) for enterprise JWT validation. |
+| `REMOTEDESK_REQUIRE_MFA` / `RemoteDesk__RequireMfa` | `false` | When true, rejects sessions lacking MFA claims (`amr`/`acr`). |
 
 ### Host Agent Command-Line Options
 
@@ -378,6 +385,37 @@ docker compose up -d
 docker compose ps
 docker compose logs -f signaling
 ```
+
+---
+
+## Cloud Deployment (Railway & Cloudflare Tunnel)
+
+### 1. One-Click Deploy on Railway
+
+SwiftDesk includes a native [`railway.toml`](railway.toml) configuration for instant containerized cloud deployment:
+
+1. Fork or push this repository to GitHub.
+2. In [Railway.app](https://railway.app), create a new project and select **Deploy from GitHub repo**.
+3. Railway automatically detects the root `Dockerfile` and `railway.toml`.
+4. Under the service **Variables** tab, set:
+   - `REMOTEDESK_BOOTSTRAP_TOKEN`: Secure random secret string (e.g., `openssl rand -base64 32`)
+   - `REMOTEDESK_OPERATOR_KEY`: Secure random secret string for client operators
+   - `REMOTEDESK_SIGNING_KEY`: 32+ character HMAC key for signing tickets
+5. Under **Settings -> Networking**, click **Generate Domain** to get your public HTTPS URL (e.g., `https://swiftdesk-production.up.railway.app`).
+
+### 2. Testing with Cloudflare Quick Tunnel
+
+To test remote connections across different networks without opening firewall/router ports:
+
+```powershell
+# 1. Start local signaling server
+dotnet run --project src/RemoteDesk.Signaling --urls http://127.0.0.1:5080
+
+# 2. Expose via Cloudflare Quick Tunnel
+cloudflared tunnel --url http://localhost:5080
+```
+
+Pass the generated `https://*.trycloudflare.com` URL as `--server` to the Host Agent and Client!
 
 ---
 
