@@ -25,9 +25,16 @@ New-Item -ItemType Directory -Path $PublishDir -Force | Out-Null
 $DotnetPath = Join-Path $RepoRoot "work\.dotnet\dotnet.exe"
 if (-not (Test-Path $DotnetPath)) { $DotnetPath = "dotnet" }
 
-& $DotnetPath publish (Join-Path $RepoRoot "src\RemoteDesk.Client\RemoteDesk.Client.csproj") -c $Configuration -r win-x64 --self-contained true -o $PublishDir
-& $DotnetPath publish (Join-Path $RepoRoot "src\RemoteDesk.Agent\RemoteDesk.Agent.csproj") -c $Configuration -r win-x64 --self-contained true -o $PublishDir
-& $DotnetPath publish (Join-Path $RepoRoot "src\RemoteDesk.PrivilegedHelper\RemoteDesk.PrivilegedHelper.csproj") -c $Configuration -r win-x64 --self-contained true -o $PublishDir
+function Invoke-SwiftDeskPublish([string]$ProjectPath) {
+    & $DotnetPath publish $ProjectPath -c $Configuration -r win-x64 --self-contained true -o $PublishDir
+    if ($LASTEXITCODE -ne 0) {
+        throw "Publishing '$ProjectPath' failed with exit code $LASTEXITCODE"
+    }
+}
+
+Invoke-SwiftDeskPublish (Join-Path $RepoRoot "src\RemoteDesk.Client\RemoteDesk.Client.csproj")
+Invoke-SwiftDeskPublish (Join-Path $RepoRoot "src\RemoteDesk.Agent\RemoteDesk.Agent.csproj")
+Invoke-SwiftDeskPublish (Join-Path $RepoRoot "src\RemoteDesk.PrivilegedHelper\RemoteDesk.PrivilegedHelper.csproj")
 
 Write-Host "==> Creating SwiftDesk.exe launcher alias and branding assets..." -ForegroundColor Cyan
 Copy-Item (Join-Path $PublishDir "RemoteDesk.Client.exe") (Join-Path $PublishDir "SwiftDesk.exe") -Force
