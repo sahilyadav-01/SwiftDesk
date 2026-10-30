@@ -1,5 +1,6 @@
 using System.Net.WebSockets;
 using System.Security.Cryptography;
+using System.Threading.Channels;
 using RemoteDesk.Core;
 using RemoteDesk.Protocol;
 using RemoteDesk.Transport;
@@ -13,10 +14,18 @@ internal sealed class ClientSession(
 {
     private readonly SemaphoreSlim _sendLock = new(1, 1);
     private readonly DataChannelMessageFramer _relayFrameFramer = new();
+    private readonly Channel<InputCommand> _pointerMoves = Channel.CreateBounded<InputCommand>(
+        new BoundedChannelOptions(1)
+        {
+            SingleReader = true,
+            SingleWriter = false,
+            FullMode = BoundedChannelFullMode.DropOldest,
+        });
     private long _sequence;
     private RtcPeerCoordinator? _rtc;
     private CancellationTokenSource? _sessionCts;
     private Task? _receivePumpTask;
+    private Task? _pointerMovePumpTask;
 
     public SessionPermission Permissions { get; } = permissions;
 
@@ -26,6 +35,9 @@ internal sealed class ClientSession(
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         _sessionCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _pointerMovePumpTask = Task.Run(
+            () => SendPointerMovesAsync(_sessionCts.Token),
+            _sessionCts.Token);
 
         await AnnounceAsync(_sessionCts.Token);
 
@@ -151,7 +163,45 @@ internal sealed class ClientSession(
 
         var cmd = new InputCommand(kind, normalizedX, normalizedY, key, wheelDelta);
         ProtocolValidation.Validate(cmd);
+
+        if (kind == RemoteInputKind.PointerMove)
+        {
+            // Pointer events can arrive hundreds of times per second. Keep only the
+            // newest position so reliable WebSocket delivery cannot build seconds of
+            // stale cursor movement ahead of clicks and keystrokes.
+            _pointerMoves.Writer.TryWrite(cmd);
+            return;
+        }
+
         await SendEnvelopeAsync(ControlMessageKind.Input, cmd, cancellationToken);
+    }
+
+    private async Task SendPointerMovesAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (await _pointerMoves.Reader.WaitToReadAsync(cancellationToken))
+            {
+                InputCommand? latest = null;
+                while (_pointerMoves.Reader.TryRead(out var pending))
+                {
+                    latest = pending;
+                }
+
+                if (latest is not null)
+                {
+                    await SendEnvelopeAsync(ControlMessageKind.Input, latest, cancellationToken);
+                }
+
+                // 30-35 Hz is visually smooth while keeping control traffic well
+                // below the rate that can saturate a relayed WebSocket connection.
+                await Task.Delay(30, cancellationToken);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Expected during session shutdown.
+        }
     }
 
     public async Task SendFileAsync(string path, CancellationToken cancellationToken)
@@ -222,7 +272,13 @@ internal sealed class ClientSession(
 
     public async ValueTask DisposeAsync()
     {
+        _pointerMoves.Writer.TryComplete();
         _sessionCts?.Cancel();
+        if (_pointerMovePumpTask is not null)
+        {
+            await _pointerMovePumpTask;
+        }
+
         if (_receivePumpTask is not null)
         {
             try

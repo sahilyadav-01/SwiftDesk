@@ -117,11 +117,33 @@ try
 {
     while (!shutdown.IsCancellationRequested)
     {
-        await api.HeartbeatAsync(
-            deviceId,
-            deviceSecret,
-            new HeartbeatRequest("0.1.0", capabilities),
-            shutdown.Token);
+        try
+        {
+            await api.HeartbeatAsync(
+                deviceId,
+                deviceSecret,
+                new HeartbeatRequest("0.1.0", capabilities),
+                shutdown.Token);
+        }
+        catch (SignalingApiException exception) when (
+            exception.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.NotFound
+            && !string.IsNullOrWhiteSpace(options.BootstrapToken))
+        {
+            // A non-persistent signaling node can lose its device registry after a
+            // restart. Recover without terminating the Agent so the host becomes
+            // reachable again and the Client can display its newly issued address.
+            Console.WriteLine("The server no longer recognizes this device. Re-enrolling automaticallyâ€¦");
+            var enrollment = await api.EnrollAsync(
+                options.BootstrapToken,
+                new DeviceEnrollmentRequest(options.DeviceName, capabilities.Platform),
+                shutdown.Token);
+            deviceId = enrollment.DeviceId;
+            deviceSecret = enrollment.DeviceSecret;
+            PersistIdentity(deviceId, deviceSecret);
+            handledRequests.Clear();
+            Console.WriteLine($"SwiftDesk ID refreshed: {deviceId}");
+            continue;
+        }
 
         var pending = await api.GetPendingSessionsAsync(deviceId, deviceSecret, shutdown.Token);
         foreach (var request in pending.Where(item => handledRequests.Add(item.SessionId)))

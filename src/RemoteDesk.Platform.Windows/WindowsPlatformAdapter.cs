@@ -268,7 +268,24 @@ public sealed partial class WindowsPlatformAdapter(IPrivilegedRebootClient? rebo
                     _ => isDown ? MOUSEEVENTF_LEFTDOWN : MOUSEEVENTF_LEFTUP,
                 };
 
+                // Apply the click coordinates atomically with the button event. This
+                // keeps clicks accurate even when intermediate pointer moves were
+                // deliberately conflated by the controller.
+                inputs = new INPUT[2];
                 inputs[0] = new INPUT
+                {
+                    type = INPUT_MOUSE,
+                    mkhi = new MOUSEKEYBDHARDWAREINPUT
+                    {
+                        mi = new MOUSEINPUT
+                        {
+                            dx = (int)(Math.Clamp(input.NormalizedX, 0.0, 1.0) * 65535.0),
+                            dy = (int)(Math.Clamp(input.NormalizedY, 0.0, 1.0) * 65535.0),
+                            dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK,
+                        },
+                    },
+                };
+                inputs[1] = new INPUT
                 {
                     type = INPUT_MOUSE,
                     mkhi = new MOUSEKEYBDHARDWAREINPUT
@@ -279,7 +296,7 @@ public sealed partial class WindowsPlatformAdapter(IPrivilegedRebootClient? rebo
                         },
                     },
                 };
-                SendInput(1, inputs, cbSize);
+                SendInput(2, inputs, cbSize);
                 break;
             }
 

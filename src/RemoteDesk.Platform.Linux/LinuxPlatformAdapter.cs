@@ -264,12 +264,15 @@ public sealed class LinuxPlatformAdapter(
                 case RemoteInputKind.PointerButtonUp:
                 {
                     var isPress = input.Kind == RemoteInputKind.PointerButtonDown;
+                    var x = (int)(Math.Clamp(input.NormalizedX, 0.0, 1.0) * screenWidth);
+                    var y = (int)(Math.Clamp(input.NormalizedY, 0.0, 1.0) * screenHeight);
                     uint button = input.Key switch
                     {
                         "Right" => 3,
                         "Middle" => 2,
                         _ => 1,
                     };
+                    _ = X11Interop.XTestFakeMotionEvent(display, -1, x, y, 0);
                     _ = X11Interop.XTestFakeButtonEvent(display, button, isPress, 0);
                     _ = X11Interop.XFlush(display);
                     break;
