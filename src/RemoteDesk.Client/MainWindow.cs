@@ -10,6 +10,7 @@ using RemoteDesk.Core;
 using RemoteDesk.Protocol;
 using RemoteDesk.Transport;
 using System.Diagnostics;
+using System.Globalization;
 
 namespace RemoteDesk.Client;
 
@@ -102,6 +103,7 @@ internal sealed class MainWindow : Window, IAsyncDisposable
     };
     private readonly Button _disconnectSession = new() { Content = "Disconnect" };
     private readonly Button _toggleFullScreen = new() { Content = "Full screen" };
+    private readonly StackPanel _recentSessionsList = new() { Spacing = 8 };
 
     private readonly Border _screenContainer;
     private readonly Border _sessionWorkspacePanel;
@@ -280,16 +282,11 @@ internal sealed class MainWindow : Window, IAsyncDisposable
                 },
                 new Border
                 {
-                    Height = 84,
+                    MinHeight = 84,
                     Background = new SolidColorBrush(Color.Parse("#F8FAFC")),
                     CornerRadius = new CornerRadius(10),
-                    Child = new TextBlock
-                    {
-                        Text = "Your recent remote connections will appear here.",
-                        Foreground = SecondaryTextBrush,
-                        HorizontalAlignment = HorizontalAlignment.Center,
-                        VerticalAlignment = VerticalAlignment.Center,
-                    },
+                    Padding = new Thickness(8),
+                    Child = _recentSessionsList,
                 },
             },
         });
@@ -662,11 +659,17 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         _cancelAuthorization.Click += (_, _) => _connectionAttemptCts?.Cancel();
         _disconnectSession.Click += DisconnectSessionClickedAsync;
         _toggleFullScreen.Click += (_, _) => ToggleFullScreen();
-        Activated += (_, _) => RefreshLocalDeviceId();
+        Activated += (_, _) =>
+        {
+            RefreshLocalDeviceId();
+            _ = RefreshRecentSessionsAsync();
+        };
         Closed += WindowClosed;
 
         _deviceIdRefreshTimer.Tick += (_, _) => RefreshLocalDeviceId();
+        ShowRecentSessionsPlaceholder("Loading recent sessions...");
         _ = InitializeLocalAgentAsync();
+        _ = RefreshRecentSessionsAsync();
     }
 
     private void OnScreenPointerMoved(object? sender, PointerEventArgs e)
@@ -895,7 +898,135 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         {
             _connect.IsEnabled = true;
             _connect.Content = "Connect  ->";
+            _ = RefreshRecentSessionsAsync();
         }
+    }
+
+    private async Task RefreshRecentSessionsAsync()
+    {
+        if (!Uri.TryCreate(_server.Text, UriKind.Absolute, out var serverUri)
+            || serverUri.Scheme is not ("http" or "https"))
+        {
+            return;
+        }
+
+        try
+        {
+            using var httpClient = new HttpClient { BaseAddress = serverUri };
+            var api = new SignalingApiClient(httpClient);
+            var recent = await api.GetRecentSessionsAsync(
+                _operatorKey.Text ?? string.Empty,
+                10,
+                _shutdown.Token);
+
+            if (Dispatcher.UIThread.CheckAccess())
+            {
+                RenderRecentSessions(recent);
+            }
+            else
+            {
+                Dispatcher.UIThread.Post(() => RenderRecentSessions(recent));
+            }
+        }
+        catch (OperationCanceledException) when (_shutdown.IsCancellationRequested)
+        {
+            // Expected while the application is closing.
+        }
+        catch
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (_recentSessionsList.Children.Count == 0
+                    || _recentSessionsList.Children[0] is TextBlock { Text: "Loading recent sessions..." })
+                {
+                    ShowRecentSessionsPlaceholder("Recent sessions are unavailable.");
+                }
+            });
+        }
+    }
+
+    private void RenderRecentSessions(IReadOnlyList<RecentSessionResponse> sessions)
+    {
+        _recentSessionsList.Children.Clear();
+        if (sessions.Count == 0)
+        {
+            ShowRecentSessionsPlaceholder("No recent remote connections yet.");
+            return;
+        }
+
+        foreach (var session in sessions)
+        {
+            var content = new Grid
+            {
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition(GridLength.Star),
+                    new ColumnDefinition(new GridLength(170)),
+                    new ColumnDefinition(new GridLength(130)),
+                },
+                ColumnSpacing = 12,
+            };
+            content.Children.Add(new TextBlock
+            {
+                Text = FormatDeviceId(session.DeviceId),
+                FontWeight = FontWeight.SemiBold,
+                Foreground = PrimaryTextBrush,
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+
+            var createdAt = new TextBlock
+            {
+                Text = session.CreatedAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture),
+                Foreground = SecondaryTextBrush,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            Grid.SetColumn(createdAt, 1);
+            content.Children.Add(createdAt);
+
+            var state = new TextBlock
+            {
+                Text = session.State.ToString(),
+                Foreground = session.State == SessionState.Active
+                    ? new SolidColorBrush(Color.Parse("#15803D"))
+                    : SecondaryTextBrush,
+                FontWeight = FontWeight.Medium,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            Grid.SetColumn(state, 2);
+            content.Children.Add(state);
+
+            var row = new Button
+            {
+                Content = content,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Padding = new Thickness(12, 10),
+                Background = Brushes.White,
+                BorderBrush = CardBorderBrush,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+            };
+            row.Click += (_, _) =>
+            {
+                _deviceId.Text = FormatDeviceId(session.DeviceId);
+                _deviceId.Focus();
+            };
+            _recentSessionsList.Children.Add(row);
+        }
+    }
+
+    private void ShowRecentSessionsPlaceholder(string message)
+    {
+        _recentSessionsList.Children.Clear();
+        _recentSessionsList.Children.Add(new TextBlock
+        {
+            Text = message,
+            Foreground = SecondaryTextBrush,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(12, 22),
+        });
     }
 
     private void OnRemoteFrameReceived(byte[] frameBytes)
@@ -964,6 +1095,7 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         WindowState = WindowState.Normal;
         _toggleFullScreen.Content = "Full screen";
         SetStatus("Disconnected");
+        _ = RefreshRecentSessionsAsync();
     }
 
     private void ToggleFullScreen()

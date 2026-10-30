@@ -239,6 +239,28 @@ public sealed class SessionRegistry(
     public Task<SessionStatusResponse> GetStatusAsync(string sessionId, CancellationToken cancellationToken = default) =>
         Task.FromResult(GetStatus(sessionId));
 
+    public Task<IReadOnlyList<RecentSessionResponse>> GetRecentAsync(
+        string operatorName,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        IReadOnlyList<RecentSessionResponse> recent = _sessions.Values
+            .Select(GetFreshSnapshot)
+            .Where(snapshot => string.Equals(snapshot.OperatorName, operatorName, StringComparison.Ordinal))
+            .OrderByDescending(snapshot => snapshot.CreatedAt)
+            .Take(Math.Clamp(limit, 1, 50))
+            .Select(snapshot => new RecentSessionResponse(
+                snapshot.SessionId,
+                snapshot.DeviceId,
+                snapshot.OperatorName,
+                snapshot.GrantedPermissions,
+                snapshot.State,
+                snapshot.CreatedAt))
+            .ToArray();
+        return Task.FromResult(recent);
+    }
+
     public Task<bool> SetStateAsync(string sessionId, SessionState state, CancellationToken cancellationToken = default)
     {
         if (!_sessions.TryGetValue(sessionId, out var session))

@@ -266,6 +266,32 @@ app.MapPost("/api/sessions", async (
     }
 });
 
+app.MapGet("/api/sessions", async (
+    HttpContext context,
+    IOperatorAuthService operatorAuth,
+    ISessionStore sessions,
+    [FromQuery] int limit = 10) =>
+{
+    var auth = operatorAuth.Authenticate(
+        context.Request.Headers.Authorization,
+        context.Request.Headers["X-Operator-Key"]);
+    if (!auth.IsSuccess || auth.Identity is null)
+    {
+        var statusCode = auth.FailureReason is "mfa_required" or "insufficient_role"
+            ? StatusCodes.Status403Forbidden
+            : StatusCodes.Status401Unauthorized;
+        return Results.Json(
+            new ErrorResponse(auth.FailureReason ?? "unauthorized", auth.Description ?? "Operator authentication failed."),
+            statusCode: statusCode);
+    }
+
+    var recent = await sessions.GetRecentAsync(
+        auth.Identity.DisplayName,
+        Math.Clamp(limit, 1, 50),
+        context.RequestAborted);
+    return Results.Ok(recent);
+});
+
 app.MapGet("/api/sessions/{sessionId}", async (
     HttpContext context,
     string sessionId,

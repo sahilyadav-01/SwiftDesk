@@ -282,13 +282,13 @@ The Windows installer compiles via WiX v4 into an enterprise MSI package that in
   -OperatorKey "your-operator-key"
 
 # Install silently (with automated Windows Service registration)
-msiexec /i .\packaging\windows\SwiftDesk-1.2.1-Setup.msi /qn
+msiexec /i .\packaging\windows\SwiftDesk-1.2.2-Setup.msi /qn
 
 # Verify the Windows Service status
 Get-Service SwiftDeskPrivilegedHelper
 
 # Uninstall
-msiexec /x .\packaging\windows\SwiftDesk-1.2.1-Setup.msi /qn
+msiexec /x .\packaging\windows\SwiftDesk-1.2.2-Setup.msi /qn
 ```
 
 ### 2. Linux Packages (Debian & RPM)

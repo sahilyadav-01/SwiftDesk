@@ -96,6 +96,21 @@ public sealed class SignalingApiClient(HttpClient httpClient)
             cancellationToken);
     }
 
+    public Task<IReadOnlyList<RecentSessionResponse>> GetRecentSessionsAsync(
+        string operatorTokenOrKey,
+        int limit = 10,
+        CancellationToken cancellationToken = default)
+    {
+        var (header, value) = ResolveOperatorHeader(operatorTokenOrKey);
+        return SendAsync<object, IReadOnlyList<RecentSessionResponse>>(
+            HttpMethod.Get,
+            $"/api/sessions?limit={Math.Clamp(limit, 1, 50)}",
+            null,
+            header,
+            value,
+            cancellationToken);
+    }
+
     private static (string Header, string Value) ResolveOperatorHeader(string tokenOrKey)
     {
         if (string.IsNullOrWhiteSpace(tokenOrKey))

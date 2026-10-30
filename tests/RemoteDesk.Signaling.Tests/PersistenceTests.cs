@@ -65,6 +65,13 @@ public sealed class PersistenceTests
         Assert.Equal(SessionState.Approved, status.State);
         Assert.Equal(SessionPermission.ViewScreen, status.GrantedPermissions);
         Assert.NotNull(status.ControllerTicket);
+
+        var recent = await sessions.GetRecentAsync("Alice", 10, ct);
+        var recentSession = Assert.Single(recent);
+        Assert.Equal(snapshot.SessionId, recentSession.SessionId);
+        Assert.Equal(enrolled.DeviceId, recentSession.DeviceId);
+        Assert.Equal(SessionState.Approved, recentSession.State);
+        Assert.Empty(await sessions.GetRecentAsync("Another operator", 10, ct));
     }
 
     [Fact]

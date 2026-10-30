@@ -28,6 +28,7 @@ public interface ISessionStore
     Task<IReadOnlyList<PendingSessionRequest>> GetPendingForDeviceAsync(string deviceId, CancellationToken cancellationToken = default);
     Task<ApproveSessionResponse> DecideAsync(string deviceId, string sessionId, ApproveSessionRequest decision, CancellationToken cancellationToken = default);
     Task<SessionStatusResponse> GetStatusAsync(string sessionId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<RecentSessionResponse>> GetRecentAsync(string operatorName, int limit, CancellationToken cancellationToken = default);
     Task<bool> SetStateAsync(string sessionId, SessionState state, CancellationToken cancellationToken = default);
 }
 

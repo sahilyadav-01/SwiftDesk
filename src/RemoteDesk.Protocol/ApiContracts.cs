@@ -40,5 +40,13 @@ public sealed record SessionStatusResponse(
     string? ControllerTicket,
     DateTimeOffset ExpiresAt);
 
+public sealed record RecentSessionResponse(
+    string SessionId,
+    string DeviceId,
+    string OperatorName,
+    SessionPermission GrantedPermissions,
+    SessionState State,
+    DateTimeOffset CreatedAt);
+
 public sealed record ErrorResponse(string Code, string Message);
 

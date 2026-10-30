@@ -8,7 +8,7 @@
 
 param(
     [string]$Configuration = "Release",
-    [string]$OutputMsi = "SwiftDesk-1.2.1-Setup.msi",
+    [string]$OutputMsi = "SwiftDesk-1.2.2-Setup.msi",
     [string]$ServerUrl = "https://academy-sending-treo-apparent.trycloudflare.com",
     [string]$BootstrapToken = "Jwm6reOSdWLx5Q0Y2hzA6dcurwYUbcHyTKOdqMosdEM=",
     [string]$OperatorKey = "bdVrcJpCp2ih6UCl6f1rwoynECaWOte1FY2Y3WPtyjo="

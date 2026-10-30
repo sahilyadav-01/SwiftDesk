@@ -462,6 +462,46 @@ public sealed class PostgresSessionStore(
             expiresAt);
     }
 
+    public async Task<IReadOnlyList<RecentSessionResponse>> GetRecentAsync(
+        string operatorName,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        var now = _timeProvider.GetUtcNow();
+        const string sql = """
+            SELECT session_id, device_id, operator_name, granted_permissions,
+                   CASE
+                       WHEN state IN ('Pending', 'Approved') AND expires_at <= $2 THEN 'Expired'
+                       ELSE state
+                   END AS effective_state,
+                   created_at
+            FROM sessions
+            WHERE operator_name = $1
+            ORDER BY created_at DESC
+            LIMIT $3;
+            """;
+
+        await using var command = _dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue(operatorName);
+        command.Parameters.AddWithValue(now);
+        command.Parameters.AddWithValue(Math.Clamp(limit, 1, 50));
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        var results = new List<RecentSessionResponse>();
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            results.Add(new RecentSessionResponse(
+                reader.GetString(0),
+                reader.GetString(1),
+                reader.GetString(2),
+                (SessionPermission)reader.GetInt32(3),
+                Enum.Parse<SessionState>(reader.GetString(4)),
+                reader.GetFieldValue<DateTimeOffset>(5)));
+        }
+
+        return results;
+    }
+
     public async Task<bool> SetStateAsync(string sessionId, SessionState state, CancellationToken cancellationToken = default)
     {
         const string sql = "UPDATE sessions SET state = $1 WHERE session_id = $2;";
