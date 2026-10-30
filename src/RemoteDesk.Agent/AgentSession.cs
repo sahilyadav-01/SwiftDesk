@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
+using System.Threading.Channels;
 using RemoteDesk.Core;
 using RemoteDesk.Protocol;
 using RemoteDesk.Transport;
@@ -98,9 +99,19 @@ internal sealed class AgentSession(
 
     private async Task StreamScreenLoopAsync(ClientWebSocket socket, CancellationToken cancellationToken)
     {
+        const int relayFrameIntervalMs = 150;
+        var latestFrames = Channel.CreateBounded<ScreenFrame>(new BoundedChannelOptions(1)
+        {
+            SingleReader = true,
+            SingleWriter = true,
+            FullMode = BoundedChannelFullMode.DropOldest,
+        });
+
+        var captureTask = CaptureLatestFramesAsync(latestFrames.Writer, cancellationToken);
+        long lastRelayFrameAt = -relayFrameIntervalMs;
         try
         {
-            await foreach (var frame in platform.CaptureAsync(15, cancellationToken))
+            await foreach (var frame in latestFrames.Reader.ReadAllAsync(cancellationToken))
             {
                 try
                 {
@@ -110,6 +121,17 @@ internal sealed class AgentSession(
                     {
                         continue;
                     }
+
+                    // The relay is reliable and therefore vulnerable to stale-frame
+                    // buildup. Keep its bandwidth modest and favour a current 6-7 FPS
+                    // view over a smoother stream that is several seconds behind.
+                    var now = Environment.TickCount64;
+                    if (now - lastRelayFrameAt < relayFrameIntervalMs)
+                    {
+                        continue;
+                    }
+
+                    lastRelayFrameAt = now;
 
                     // Reliable WebSocket relay fallback for networks where direct WebRTC cannot connect.
                     foreach (var packet in _relayFrameFramer.Encode(frameBytes, 36 * 1024))
@@ -136,6 +158,43 @@ internal sealed class AgentSession(
         catch (Exception exception)
         {
             Console.WriteLine($"Screen capture stream ended: {exception.Message}");
+        }
+        finally
+        {
+            try
+            {
+                await captureTask;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // Expected when session stops
+            }
+        }
+    }
+
+    private async Task CaptureLatestFramesAsync(
+        ChannelWriter<ScreenFrame> writer,
+        CancellationToken cancellationToken)
+    {
+        Exception? completionError = null;
+        try
+        {
+            await foreach (var frame in platform.CaptureAsync(15, cancellationToken))
+            {
+                writer.TryWrite(frame);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Expected when session stops
+        }
+        catch (Exception exception)
+        {
+            completionError = exception;
+        }
+        finally
+        {
+            writer.TryComplete(completionError);
         }
     }
 

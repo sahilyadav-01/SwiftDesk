@@ -15,8 +15,10 @@ public sealed partial class WindowsPlatformAdapter(IPrivilegedRebootClient? rebo
         .FirstOrDefault(c => c.FormatID == ImageFormat.Jpeg.Guid);
     private static readonly EncoderParameters JpegParameters = new(1)
     {
-        Param = { [0] = new EncoderParameter(Encoder.Quality, 65L) }
+        Param = { [0] = new EncoderParameter(Encoder.Quality, 55L) }
     };
+    private const int MaxStreamWidth = 1920;
+    private const int MaxStreamHeight = 1080;
     private const int SM_XVIRTUALSCREEN = 76;
     private const int SM_YVIRTUALSCREEN = 77;
     private const int SM_CXVIRTUALSCREEN = 78;
@@ -170,26 +172,36 @@ public sealed partial class WindowsPlatformAdapter(IPrivilegedRebootClient? rebo
             }
 
             ScreenFrame frame;
-            using (var bitmap = new Bitmap(width, height, PixelFormat.Format32bppRgb))
+            using (var capturedBitmap = new Bitmap(width, height, PixelFormat.Format32bppRgb))
             {
-                using (var graphics = Graphics.FromImage(bitmap))
+                using (var graphics = Graphics.FromImage(capturedBitmap))
                 {
                     graphics.CopyFromScreen(left, top, 0, 0, new Size(width, height), CopyPixelOperation.SourceCopy);
                 }
 
+                var scale = Math.Min(1d, Math.Min(
+                    MaxStreamWidth / (double)width,
+                    MaxStreamHeight / (double)height));
+                var streamWidth = Math.Max(1, (int)Math.Round(width * scale));
+                var streamHeight = Math.Max(1, (int)Math.Round(height * scale));
+                using var scaledBitmap = scale < 1d
+                    ? new Bitmap(capturedBitmap, new Size(streamWidth, streamHeight))
+                    : null;
+                var outputBitmap = scaledBitmap ?? capturedBitmap;
+
                 using var stream = new MemoryStream();
                 if (JpegEncoder is not null)
                 {
-                    bitmap.Save(stream, JpegEncoder, JpegParameters);
+                    outputBitmap.Save(stream, JpegEncoder, JpegParameters);
                 }
                 else
                 {
-                    bitmap.Save(stream, ImageFormat.Jpeg);
+                    outputBitmap.Save(stream, ImageFormat.Jpeg);
                 }
                 frame = new ScreenFrame(
                     Interlocked.Increment(ref sequence),
-                    width,
-                    height,
+                    streamWidth,
+                    streamHeight,
                     "Jpeg",
                     stream.ToArray(),
                     DateTimeOffset.UtcNow);

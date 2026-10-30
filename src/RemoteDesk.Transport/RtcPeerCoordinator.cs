@@ -5,6 +5,9 @@ namespace RemoteDesk.Transport;
 
 public sealed class RtcPeerCoordinator : IAsyncDisposable
 {
+    // Keep at most a small amount of stale video queued. Screen frames are disposable:
+    // showing the newest frame is more useful than eventually delivering every frame.
+    private const ulong MaxQueuedScreenBytes = 512 * 1024;
     private readonly RTCPeerConnection _peerConnection;
     private readonly DataChannelMessageFramer _messageFramer = new();
     private RTCDataChannel? _dataChannel;
@@ -126,6 +129,14 @@ public sealed class RtcPeerCoordinator : IAsyncDisposable
     {
         if (_dataChannel?.readyState == RTCDataChannelState.open)
         {
+            // Returning true means the open data channel owns this frame. When it is
+            // congested, deliberately drop the frame instead of duplicating it onto
+            // the reliable WebSocket fallback or growing latency without bound.
+            if (_dataChannel.bufferedAmount > MaxQueuedScreenBytes)
+            {
+                return true;
+            }
+
             try
             {
                 foreach (var packet in _messageFramer.Encode(data))
