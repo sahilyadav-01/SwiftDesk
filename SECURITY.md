@@ -56,3 +56,4 @@ For an in-depth breakdown of our trust boundaries, cryptographic models, and ent
 - **Zero Stealth Mode**: SwiftDesk never operates invisibly or in the background without clear user awareness.
 - **Least-Privilege Isolation**: Interactive agents run as standard desktop users; reboots are gated through an HMAC-authenticated local daemon.
 - **No Arbitrary Shell Execution**: Protocol contracts explicitly reject shell execution, arbitrary command injection, or script evaluation.
+
