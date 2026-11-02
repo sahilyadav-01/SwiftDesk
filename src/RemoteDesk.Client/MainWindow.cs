@@ -110,8 +110,10 @@ internal sealed class MainWindow : Window, IAsyncDisposable
     private readonly Border _authorizationOverlay;
     private readonly CancellationTokenSource _shutdown = new();
     private readonly DispatcherTimer _deviceIdRefreshTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private readonly RecentSessionHistory _recentSessionHistory = new();
     private HttpClient? _httpClient;
     private ClientSession? _session;
+    private RecentSessionResponse? _currentRecentSession;
     private CancellationTokenSource? _connectionAttemptCts;
     private double _remoteFrameWidth;
     private double _remoteFrameHeight;
@@ -842,6 +844,15 @@ internal sealed class MainWindow : Window, IAsyncDisposable
                 request,
                 connectionToken);
 
+            _currentRecentSession = new RecentSessionResponse(
+                created.SessionId,
+                request.DeviceId,
+                request.OperatorName,
+                SessionPermission.None,
+                created.State,
+                DateTimeOffset.Now);
+            await RememberRecentSessionAsync(_currentRecentSession);
+
             _authorizationMessage.Text = $"Waiting for approval from {FormatDeviceId(request.DeviceId)}.";
             SetStatus($"Waiting for approval ({created.SessionId})...");
             SessionStatusResponse status;
@@ -854,6 +865,13 @@ internal sealed class MainWindow : Window, IAsyncDisposable
                     connectionToken);
             }
             while (status.State == SessionState.Pending);
+
+            _currentRecentSession = _currentRecentSession with
+            {
+                GrantedPermissions = status.GrantedPermissions,
+                State = status.State,
+            };
+            await RememberRecentSessionAsync(_currentRecentSession);
 
             if (status.State is not (SessionState.Approved or SessionState.Active)
                 || status.ControllerTicket is null)
@@ -871,6 +889,9 @@ internal sealed class MainWindow : Window, IAsyncDisposable
             _session.OnStatusMessage += SetStatus;
 
             await _session.StartAsync(connectionToken);
+
+            _currentRecentSession = _currentRecentSession with { State = SessionState.Active };
+            await RememberRecentSessionAsync(_currentRecentSession);
 
             _sendFile.IsEnabled = status.GrantedPermissions.HasFlag(SessionPermission.TransferFiles);
             _sessionWorkspacePanel.IsVisible = true;
@@ -904,9 +925,20 @@ internal sealed class MainWindow : Window, IAsyncDisposable
 
     private async Task RefreshRecentSessionsAsync()
     {
+        IReadOnlyList<RecentSessionResponse> cached;
+        try
+        {
+            cached = await _recentSessionHistory.LoadAsync(_shutdown.Token);
+        }
+        catch (OperationCanceledException) when (_shutdown.IsCancellationRequested)
+        {
+            return;
+        }
+
         if (!Uri.TryCreate(_server.Text, UriKind.Absolute, out var serverUri)
             || serverUri.Scheme is not ("http" or "https"))
         {
+            RenderRecentSessionsOnUiThread(cached);
             return;
         }
 
@@ -914,19 +946,15 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         {
             using var httpClient = new HttpClient { BaseAddress = serverUri };
             var api = new SignalingApiClient(httpClient);
-            var recent = await api.GetRecentSessionsAsync(
+            var serverRecent = await api.GetRecentSessionsAsync(
                 _operatorKey.Text ?? string.Empty,
+                50,
+                _shutdown.Token);
+            var recent = await _recentSessionHistory.MergeAndSaveAsync(
+                serverRecent,
                 10,
                 _shutdown.Token);
-
-            if (Dispatcher.UIThread.CheckAccess())
-            {
-                RenderRecentSessions(recent);
-            }
-            else
-            {
-                Dispatcher.UIThread.Post(() => RenderRecentSessions(recent));
-            }
+            RenderRecentSessionsOnUiThread(recent);
         }
         catch (OperationCanceledException) when (_shutdown.IsCancellationRequested)
         {
@@ -934,14 +962,45 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         }
         catch
         {
-            Dispatcher.UIThread.Post(() =>
+            if (cached.Count > 0)
             {
-                if (_recentSessionsList.Children.Count == 0
-                    || _recentSessionsList.Children[0] is TextBlock { Text: "Loading recent sessions..." })
+                RenderRecentSessionsOnUiThread(cached.Take(10).ToArray());
+            }
+            else
+            {
+                Dispatcher.UIThread.Post(() =>
                 {
-                    ShowRecentSessionsPlaceholder("Recent sessions are unavailable.");
-                }
-            });
+                    if (_recentSessionsList.Children.Count == 0
+                        || _recentSessionsList.Children[0] is TextBlock { Text: "Loading recent sessions..." })
+                    {
+                        ShowRecentSessionsPlaceholder("Recent sessions are unavailable.");
+                    }
+                });
+            }
+        }
+    }
+
+    private void RenderRecentSessionsOnUiThread(IReadOnlyList<RecentSessionResponse> sessions)
+    {
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            RenderRecentSessions(sessions);
+        }
+        else
+        {
+            Dispatcher.UIThread.Post(() => RenderRecentSessions(sessions));
+        }
+    }
+
+    private async Task RememberRecentSessionAsync(RecentSessionResponse session)
+    {
+        try
+        {
+            await _recentSessionHistory.UpsertAsync(session, _shutdown.Token);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // History persistence is best-effort and must not break a remote session.
         }
     }
 
@@ -1095,6 +1154,11 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         WindowState = WindowState.Normal;
         _toggleFullScreen.Content = "Full screen";
         SetStatus("Disconnected");
+        if (_currentRecentSession is not null)
+        {
+            _currentRecentSession = _currentRecentSession with { State = SessionState.Disconnected };
+            await RememberRecentSessionAsync(_currentRecentSession);
+        }
         _ = RefreshRecentSessionsAsync();
     }
 
@@ -1304,6 +1368,7 @@ internal sealed class MainWindow : Window, IAsyncDisposable
 
         _httpClient?.Dispose();
         _httpClient = null;
+        _recentSessionHistory.Dispose();
         _shutdown.Dispose();
         GC.SuppressFinalize(this);
     }

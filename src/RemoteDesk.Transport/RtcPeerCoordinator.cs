@@ -7,7 +7,7 @@ public sealed class RtcPeerCoordinator : IAsyncDisposable
 {
     // Keep at most a small amount of stale video queued. Screen frames are disposable:
     // showing the newest frame is more useful than eventually delivering every frame.
-    private const ulong MaxQueuedScreenBytes = 512 * 1024;
+    private const ulong MaxQueuedScreenBytes = 192 * 1024;
     private readonly RTCPeerConnection _peerConnection;
     private readonly DataChannelMessageFramer _messageFramer = new();
     private RTCDataChannel? _dataChannel;
