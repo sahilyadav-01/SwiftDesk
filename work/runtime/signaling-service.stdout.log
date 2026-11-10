@@ -8,3 +8,17 @@ info: Microsoft.Hosting.Lifetime[0]
       Content root path: C:\Users\sahil yadav\Desktop\SwiftDesk\work\runtime\signaling-deploy
 info: RemoteDesk.Signaling.SessionRelayHub[1]
       Session relay paired for 'ses_1c8e5b0293434311959e9cb949a8720a'.
+info: RemoteDesk.Signaling.SessionRelayHub[2]
+      Closing session relay for 'ses_1c8e5b0293434311959e9cb949a8720a': Peer request was cancelled.
+info: RemoteDesk.Signaling.SessionRelayHub[3]
+      Session relay closed for 'ses_1c8e5b0293434311959e9cb949a8720a'.
+warn: RemoteDesk.Signaling.SessionRelayHub[4]
+      Session relay stopped unexpectedly for 'ses_1c8e5b0293434311959e9cb949a8720a'.
+      System.Net.WebSockets.WebSocketException (0x80004005): The remote party closed the WebSocket connection without completing the close handshake.
+         at System.Net.WebSockets.ManagedWebSocket.ThrowEOFUnexpected()
+         at System.Net.WebSockets.ManagedWebSocket.EnsureBufferContainsAsync(Int32 minimumRequiredBytes, CancellationToken cancellationToken)
+         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource.GetResult(Int16 token)
+         at System.Net.WebSockets.ManagedWebSocket.ReceiveAsyncPrivate[TResult](Memory`1 payloadBuffer, CancellationToken cancellationToken)
+         at System.Threading.Tasks.ValueTask`1.ValueTaskSourceAsTask.<>c.<.cctor>b__4_0(Object state)
+      --- End of stack trace from previous location ---
+         at RemoteDesk.Signaling.SessionRelayHub.RelayRoom.PumpSocketAsync(SessionRole sourceRole, SessionRole destinationRole, WebSocket source, CancellationToken cancellationToken) in C:\Users\sahil yadav\Desktop\SwiftDesk\src\RemoteDesk.Signaling\SessionRelayHub.cs:line 146
