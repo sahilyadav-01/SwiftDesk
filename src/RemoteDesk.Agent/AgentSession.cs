@@ -21,6 +21,7 @@ internal sealed class AgentSession(
     private RtcPeerCoordinator? _rtc;
     private CancellationTokenSource? _sessionCts;
     private Task? _screenStreamTask;
+    private TaskCompletionSource<long>? _pendingRelayFrameAck;
 
     public async Task RunAsync(ClientWebSocket socket, CancellationToken cancellationToken)
     {
@@ -134,11 +135,22 @@ internal sealed class AgentSession(
                     lastRelayFrameAt = now;
 
                     // Reliable WebSocket relay fallback for networks where direct WebRTC cannot connect.
+                    var acknowledgement = new TaskCompletionSource<long>(
+                        TaskCreationOptions.RunContinuationsAsynchronously);
+                    Volatile.Write(ref _pendingRelayFrameAck, acknowledgement);
+
                     foreach (var packet in _relayFrameFramer.Encode(frameBytes, 36 * 1024))
                     {
-                        var message = new ScreenFrameChunkMessage(Convert.ToBase64String(packet));
+                        var message = new ScreenFrameChunkMessage(frame.Sequence, Convert.ToBase64String(packet));
                         await SendEnvelopeAsync(socket, ControlMessageKind.ScreenFrameChunk, message, cancellationToken);
                     }
+
+                    // Do not put another frame into the reliable relay until the
+                    // controller has assembled this one. The capture task continues
+                    // replacing the single pending slot, so the next frame sent is
+                    // the newest available rather than the next stale queued frame.
+                    await acknowledgement.Task.WaitAsync(cancellationToken);
+                    Interlocked.CompareExchange(ref _pendingRelayFrameAck, null, acknowledgement);
                 }
                 catch (OperationCanceledException)
                 {
@@ -225,6 +237,17 @@ internal sealed class AgentSession(
                     var candidate = ProtocolJson.Deserialize<RtcIceCandidateMessage>(envelope.PayloadJson);
                     ProtocolValidation.Validate(candidate);
                     _rtc.AddIceCandidate(candidate);
+                }
+                return;
+            }
+
+            case ControlMessageKind.ScreenFrameAck:
+            {
+                var acknowledgement = ProtocolJson.Deserialize<ScreenFrameAckMessage>(envelope.PayloadJson);
+                var pending = Volatile.Read(ref _pendingRelayFrameAck);
+                if (pending is not null)
+                {
+                    pending.TrySetResult(acknowledgement.FrameSequence);
                 }
                 return;
             }

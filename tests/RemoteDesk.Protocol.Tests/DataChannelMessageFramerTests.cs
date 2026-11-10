@@ -83,7 +83,7 @@ public sealed class DataChannelMessageFramerTests
     public void RelaySizedChunk_FitsWebSocketControlLimit()
     {
         var packet = RandomNumberGenerator.GetBytes((36 * 1024) + 24);
-        var chunk = new ScreenFrameChunkMessage(Convert.ToBase64String(packet));
+        var chunk = new ScreenFrameChunkMessage(1, Convert.ToBase64String(packet));
         var envelope = new ControlEnvelope(
             ControlMessageKind.ScreenFrameChunk,
             "ses_test",

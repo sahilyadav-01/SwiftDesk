@@ -123,6 +123,10 @@ internal sealed class ClientSession(
                             && frameBytes is { Length: > 0 })
                         {
                             OnFrameReceived?.Invoke(frameBytes);
+                            await SendEnvelopeAsync(
+                                ControlMessageKind.ScreenFrameAck,
+                                new ScreenFrameAckMessage(chunkMessage.FrameSequence),
+                                cancellationToken);
                         }
 
                         break;

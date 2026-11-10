@@ -18,6 +18,7 @@ public enum ControlMessageKind
     ScreenFrame,
     ScreenFrameChunk,
     ScreenDimensions,
+    ScreenFrameAck,
 }
 
 public sealed record ControlEnvelope(
@@ -40,7 +41,9 @@ public sealed record ScreenFrameMessage(
     string Base64Data,
     long TimestampUnixMs);
 
-public sealed record ScreenFrameChunkMessage(string Base64Packet);
+public sealed record ScreenFrameChunkMessage(long FrameSequence, string Base64Packet);
+
+public sealed record ScreenFrameAckMessage(long FrameSequence);
 
 public sealed record PeerReadyMessage(string DeviceId, SessionRole Role);
 
