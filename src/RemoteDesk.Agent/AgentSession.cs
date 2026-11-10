@@ -22,6 +22,7 @@ internal sealed class AgentSession(
     private CancellationTokenSource? _sessionCts;
     private Task? _screenStreamTask;
     private TaskCompletionSource<long>? _pendingRelayFrameAck;
+    private long _pendingRelayFrameSequence;
 
     public async Task RunAsync(ClientWebSocket socket, CancellationToken cancellationToken)
     {
@@ -137,6 +138,7 @@ internal sealed class AgentSession(
                     // Reliable WebSocket relay fallback for networks where direct WebRTC cannot connect.
                     var acknowledgement = new TaskCompletionSource<long>(
                         TaskCreationOptions.RunContinuationsAsynchronously);
+                    Volatile.Write(ref _pendingRelayFrameSequence, frame.Sequence);
                     Volatile.Write(ref _pendingRelayFrameAck, acknowledgement);
 
                     foreach (var packet in _relayFrameFramer.Encode(frameBytes, 36 * 1024))
@@ -151,6 +153,7 @@ internal sealed class AgentSession(
                     // the newest available rather than the next stale queued frame.
                     await acknowledgement.Task.WaitAsync(cancellationToken);
                     Interlocked.CompareExchange(ref _pendingRelayFrameAck, null, acknowledgement);
+                    Volatile.Write(ref _pendingRelayFrameSequence, 0);
                 }
                 catch (OperationCanceledException)
                 {
@@ -245,7 +248,8 @@ internal sealed class AgentSession(
             {
                 var acknowledgement = ProtocolJson.Deserialize<ScreenFrameAckMessage>(envelope.PayloadJson);
                 var pending = Volatile.Read(ref _pendingRelayFrameAck);
-                if (pending is not null)
+                if (pending is not null
+                    && acknowledgement.FrameSequence == Volatile.Read(ref _pendingRelayFrameSequence))
                 {
                     pending.TrySetResult(acknowledgement.FrameSequence);
                 }
