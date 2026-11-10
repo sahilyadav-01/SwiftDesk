@@ -6,13 +6,15 @@
 
 **Enterprise-Grade, Cross-Platform Remote Support & Desktop Control**
 
+[![Release](https://img.shields.io/badge/Release-v1.2.5-blue?logo=github)](https://github.com/sahilyadav-01/SwiftDesk/releases)
 [![.NET 10 LTS](https://img.shields.io/badge/.NET-10.0%20LTS-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
 [![C# 13](https://img.shields.io/badge/C%23-13.0-239120?logo=csharp&logoColor=white)](https://learn.microsoft.com/en-us/dotnet/csharp/)
 [![Avalonia UI](https://img.shields.io/badge/UI-Avalonia%2011-8C52FF?logo=avalonia&logoColor=white)](https://avaloniaui.net/)
 [![Transport](https://img.shields.io/badge/Transport-WebRTC%20%7C%20WebSocket-0052CC)](https://webrtc.org/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-informational)](https://github.com/sahilyadav-01/SwiftDesk)
 [![Tests](https://img.shields.io/badge/Tests-52%20Passed-brightgreen)](https://github.com/sahilyadav-01/SwiftDesk)
-[![Security](https://img.shields.io/badge/Security-HMAC--SHA256%20%7C%20OIDC%20MFA-critical)](docs/security.md)
+[![Security Policy](https://img.shields.io/badge/Security-Policy%20%7C%20Audited-critical)](SECURITY.md)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 SwiftDesk provides secure, owner-consented remote support across Windows, Linux (Wayland & X11), and macOS. Engineered for low latency and enterprise compliance, it features real-time screen sharing, remote mouse and keyboard control, chunked integrity-checked file transfers, attended access consent, cryptographic session tickets, clustered relay fallback, and an isolated privileged remote reboot service.
 
@@ -46,7 +48,7 @@ SwiftDesk provides secure, owner-consented remote support across Windows, Linux 
 - [Configuration Reference](#configuration-reference)
 - [Production Deployment with Docker](#production-deployment-with-docker)
 - [Cloud Deployment (Railway & Cloudflare Tunnel)](#cloud-deployment-railway--cloudflare-tunnel)
-- [Security Invariants](#security-invariants)
+- [Security Invariants & Policy](#security-invariants--policy)
 - [License & Copyright](#license--copyright)
 
 ---
@@ -423,12 +425,13 @@ Pass the generated `https://*.trycloudflare.com` URL as `--server` to the Host A
 
 SwiftDesk follows strict zero-trust and consent-first engineering invariants. For vulnerability reporting procedures and disclosure timelines, see our [Security Policy](SECURITY.md). For complete cryptographic specifications and threat models, review [docs/security.md](docs/security.md).
 
-- **Consent-First**: The host agent requires explicit owner approval for every session. Unattended access is never permitted without explicit authorization.
-- **Least-Privilege Authorization**: Permissions are independently negotiated. The agent rejects ungranted actions even if signaled by the controller.
-- **Short-Lived Signed Tickets**: Session tickets expire within minutes and are cryptographically verified using HMAC-SHA-256 with constant-time equality checks.
-- **Path Traversal & Digest Verification**: Transferred files are validated against directory traversal, sanitized, chunk-limited (48 KiB), and verified against SHA-256 digests.
-- **Process Privilege Isolation**: The user agent runs strictly as the logged-in desktop user. Privileged operations (reboot) are delegated to a dedicated daemon over authenticated local IPC.
-- **No Covert Installation**: SwiftDesk does not silently install, bypass OS boundaries, or execute arbitrary shell commands.
+- **Consent-First Attended Access**: The host agent requires explicit, interactive owner approval for every session. Unattended access is never permitted without explicit authorization.
+- **Least-Privilege Authorization**: Permissions (`ViewScreen`, `ControlInput`, `TransferFiles`, `RebootDevice`) are independently negotiated. The agent rejects ungranted actions at the dispatch layer even if signaled by a controller.
+- **Short-Lived Signed Tickets**: Session tickets expire within 5–10 minutes and are cryptographically signed using HMAC-SHA-256 with constant-time equality checks (`CryptographicOperations.FixedTimeEquals`).
+- **Path Traversal & Digest Verification**: Transferred files are validated against directory traversal, sanitized, chunk-limited (48 KiB), and verified against SHA-256 digests before writing to disk.
+- **Process Privilege Isolation**: The user agent runs strictly as the logged-in desktop user. Privileged operations (reboot) are delegated to a dedicated daemon (`RemoteDesk.PrivilegedHelper`) over authenticated local IPC with root key HMAC verification, nonces, and a 60-second cooldown.
+- **Enterprise Identity & MFA**: Support for OIDC JWT bearer tokens (RS256/HS256) with mandatory MFA (`amr`/`acr`) enforcement and RBAC.
+- **Zero Stealth / No Covert Installation**: SwiftDesk never operates invisibly, logs keystrokes outside active sessions, or bypasses operating system security boundaries.
 
 ---
 
