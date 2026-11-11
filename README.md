@@ -8,8 +8,8 @@
 
 [![Release](https://img.shields.io/badge/Release-v1.2.5-blue?logo=github)](https://github.com/sahilyadav-01/SwiftDesk/releases)
 [![.NET 10 LTS](https://img.shields.io/badge/.NET-10.0%20LTS-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
-[![C# 13](https://img.shields.io/badge/C%23-13.0-239120?logo=csharp&logoColor=white)](https://learn.microsoft.com/en-us/dotnet/csharp/)
-[![Avalonia UI](https://img.shields.io/badge/UI-Avalonia%2011-8C52FF?logo=avalonia&logoColor=white)](https://avaloniaui.net/)
+[![C# 14](https://img.shields.io/badge/C%23-14.0-239120?logo=csharp&logoColor=white)](https://learn.microsoft.com/en-us/dotnet/csharp/)
+[![Avalonia UI](https://img.shields.io/badge/UI-Avalonia%2012.1.4-8C52FF?logo=avalonia&logoColor=white)](https://avaloniaui.net/)
 [![Transport](https://img.shields.io/badge/Transport-WebRTC%20%7C%20WebSocket-0052CC)](https://webrtc.org/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-informational)](https://github.com/sahilyadav-01/SwiftDesk)
 [![Tests](https://img.shields.io/badge/Tests-52%20Passed-brightgreen)](https://github.com/sahilyadav-01/SwiftDesk)
