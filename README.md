@@ -28,6 +28,7 @@ SwiftDesk provides secure, owner-consented remote support across Windows, Linux 
 
 - [Architecture Overview](#architecture-overview)
 - [Current Status & Capabilities](#current-status--capabilities)
+- [Release Notes: v1.2.5](#release-notes-v125)
 - [Repository Structure](#repository-structure)
 - [Prerequisites](#prerequisites)
 - [Build and Test](#build-and-test)
@@ -114,12 +115,24 @@ sequenceDiagram
 | **macOS Desktop Capture / Input** | **Implemented** | CoreGraphics desktop capture & Quartz Event Services input injection |
 | **Safe File Transfer** | **Implemented** | Chunked transfer (48 KiB limit), path-traversal protection, and SHA-256 validation |
 | **Avalonia Desktop UI** | **Implemented** | Cross-platform client with real-time viewport, input capture, and file transfer manager |
-| **High-Performance Streaming Engine** | **Implemented** | Non-blocking UI frame conflation, 32 KiB SCTP WebRTC chunking, adaptive 65L GDI+ JPEG compression, zero-freeze architecture |
+| **High-Performance Streaming Engine** | **Implemented** | Latest-frame UI conflation, acknowledged WebSocket relay frames, congestion-aware WebRTC delivery, 32 KiB SCTP chunking, and 55-quality GDI+ JPEG compression |
 | **Privileged Remote Reboot** | **Implemented** | Standalone daemon (`RemoteDesk.PrivilegedHelper`) via local IPC, HMAC validation, and rate limits |
 | **Enterprise Identity & MFA** | **Implemented** | OpenID Connect (OIDC) JWT validation (RS256/HS256), `amr`/`acr` MFA enforcement, and RBAC |
 | **Clustered Relay Backplane** | **Implemented** | Redis Pub/Sub relay backplane enabling horizontal scaling across multiple signaling nodes |
 | **Database Persistence** | **Implemented** | Dual-mode: Production PostgreSQL (`Npgsql`) with connection pooling or in-memory for dev |
 | **Immutable Audit Logging** | **Implemented** | Structured audit trail for enrollment, session approvals, and connection events (`/api/audit`) |
+
+---
+
+## Release Notes: v1.2.5
+
+- Prevents delayed remote-display updates by allowing only one acknowledged WebSocket relay frame in flight.
+- Drops disposable WebRTC screen frames while the data-channel send buffer is busy, avoiding stale-frame buildup on slower connections.
+- Keeps the controller viewport responsive by decoding and rendering only the newest pending frame.
+- Ships the self-contained Windows x64 installer as `SwiftDesk-1.2.5-Setup.msi`.
+- Aligns the application assembly metadata and MSI package version at `1.2.5`.
+
+Validation: the complete test suite passes with 52 successful tests.
 
 ---
 
@@ -276,6 +289,8 @@ SwiftDesk includes production packaging workflows for Windows, Linux, and macOS,
 
 The Windows installer compiles via WiX v4 into an enterprise MSI package that installs application binaries, registers the `SwiftDeskPrivilegedHelper` Windows Service, and sets up restricted ACLs on `%ProgramData%\SwiftDesk`.
 
+The current Windows release is **v1.2.5**. Always pass the signaling URL explicitly when producing an installer for distribution; Cloudflare Quick Tunnel hostnames are temporary and should not be treated as permanent production endpoints.
+
 ```powershell
 # Build the Windows MSI installer (pre-configured with your signaling server & keys)
 .\packaging\windows\build-msi.ps1 -Configuration Release `
@@ -417,7 +432,17 @@ dotnet run --project src/RemoteDesk.Signaling --urls http://127.0.0.1:5080
 cloudflared tunnel --url http://localhost:5080
 ```
 
-Pass the generated `https://*.trycloudflare.com` URL as `--server` to the Host Agent and Client!
+Verify both the local origin and generated public URL before connecting an agent or controller:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:5080/health
+Invoke-RestMethod https://<generated-hostname>.trycloudflare.com/health
+```
+
+Pass the generated `https://*.trycloudflare.com` URL as `--server` to the Host Agent and Client, or use it as the MSI builder's `-ServerUrl` value.
+
+> [!WARNING]
+> Quick Tunnel URLs expire when the tunnel process stops and may not resolve afterward. Generate a fresh URL for each temporary test session. Use a named Cloudflare Tunnel, Railway domain, or another stable HTTPS endpoint for deployed installers.
 
 ---
 
