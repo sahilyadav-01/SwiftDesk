@@ -45,7 +45,12 @@ internal sealed class MainWindow : Window, IAsyncDisposable
     private readonly CheckBox _controlInput = new() { Content = "Control input", IsChecked = true };
     private readonly CheckBox _transferFiles = new() { Content = "File transfer" };
     private readonly CheckBox _reboot = new() { Content = "Remote reboot" };
-    private readonly Button _connect = new() { Content = "Connect  →" };
+    private readonly Button _connect = new()
+    {
+        Content = "Connect →",
+        HorizontalContentAlignment = HorizontalAlignment.Center,
+        VerticalContentAlignment = VerticalAlignment.Center,
+    };
     private readonly TextBlock _status = new()
     {
         Text = "Ready to connect",
@@ -66,8 +71,10 @@ internal sealed class MainWindow : Window, IAsyncDisposable
     };
     private readonly Button _copyDeviceId = new()
     {
-        Content = "Copy address",
+        Content = "Copy Address",
         IsEnabled = false,
+        HorizontalContentAlignment = HorizontalAlignment.Center,
+        VerticalContentAlignment = VerticalAlignment.Center,
     };
 
     private readonly Image _screenImage = new()
@@ -141,10 +148,20 @@ internal sealed class MainWindow : Window, IAsyncDisposable
 
     // Discovered tab controls
     private readonly StackPanel _discoveredList = new() { Spacing = 8 };
-    private readonly Button _scanDiscoveredBtn = new() { Content = "Scan Network / Refresh" };
+    private readonly Button _scanDiscoveredBtn = new()
+    {
+        Content = "Scan Network",
+        HorizontalContentAlignment = HorizontalAlignment.Center,
+        VerticalContentAlignment = VerticalAlignment.Center,
+    };
 
     // Invitations tab controls
-    private readonly Button _copyInvitationBtn = new() { Content = "📋 Copy Full Invitation Details" };
+    private readonly Button _copyInvitationBtn = new()
+    {
+        Content = "Copy Invitation Details",
+        HorizontalContentAlignment = HorizontalAlignment.Center,
+        VerticalContentAlignment = VerticalAlignment.Center,
+    };
     private readonly TextBlock _invitationStatusText = new()
     {
         Text = "✓ Invitation copied to clipboard!",
