@@ -215,6 +215,20 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         StyleSecondaryButton(_sendFile);
         StyleSecondaryButton(_cancelAuthorization);
 
+        _toggleFullScreen.Height = 32;
+        _toggleFullScreen.Padding = new Thickness(14, 0);
+        _toggleFullScreen.HorizontalContentAlignment = HorizontalAlignment.Center;
+        _toggleFullScreen.VerticalContentAlignment = VerticalAlignment.Center;
+        _toggleFullScreen.CornerRadius = new CornerRadius(6);
+        _toggleFullScreen.Cursor = new Cursor(StandardCursorType.Hand);
+
+        _disconnectSession.Height = 32;
+        _disconnectSession.Padding = new Thickness(14, 0);
+        _disconnectSession.HorizontalContentAlignment = HorizontalAlignment.Center;
+        _disconnectSession.VerticalContentAlignment = VerticalAlignment.Center;
+        _disconnectSession.CornerRadius = new CornerRadius(6);
+        _disconnectSession.Cursor = new Cursor(StandardCursorType.Hand);
+
         StyleTextBox(_favAddressInput, 40);
         StyleTextBox(_favNicknameInput, 40);
         StylePrimaryButton(_addFavButton, 40);
@@ -1212,11 +1226,16 @@ internal sealed class MainWindow : Window, IAsyncDisposable
             {
                 var text = $"SwiftDesk Remote Support Invitation\nSwiftDesk Address: {_thisDeviceId.Text}\nMachine: {Environment.MachineName}\nReady for secure attended session.";
                 await clipboard.SetTextAsync(text);
+                _copyInvitationBtn.Content = "✓ Copied to Clipboard!";
                 _invitationStatusText.IsVisible = true;
                 _ = Task.Run(async () =>
                 {
-                    await Task.Delay(3000);
-                    Dispatcher.UIThread.Post(() => _invitationStatusText.IsVisible = false);
+                    await Task.Delay(2500);
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        _copyInvitationBtn.Content = "Copy Invitation Details";
+                        _invitationStatusText.IsVisible = false;
+                    });
                 });
             }
         };
