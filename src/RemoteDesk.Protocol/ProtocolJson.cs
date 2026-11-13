@@ -13,12 +13,17 @@ public static class ProtocolJson
         JsonSerializer.Deserialize<T>(json, Options)
         ?? throw new JsonException($"Unable to deserialize {typeof(T).Name}.");
 
-    private static JsonSerializerOptions CreateOptions() => new(JsonSerializerDefaults.Web)
+    private static JsonSerializerOptions CreateOptions()
     {
-        PropertyNameCaseInsensitive = false,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        WriteIndented = false,
-        MaxDepth = 16,
-    };
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        {
+            PropertyNameCaseInsensitive = true,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            WriteIndented = false,
+            MaxDepth = 16,
+        };
+        options.Converters.Add(new JsonStringEnumConverter());
+        return options;
+    }
 }
 

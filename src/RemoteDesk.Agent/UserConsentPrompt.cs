@@ -8,8 +8,10 @@ internal static class UserConsentPrompt
 {
     private const uint YesNo = 0x00000004;
     private const uint IconQuestion = 0x00000020;
+    private const uint SystemModal = 0x00001000;
     private const uint SetForeground = 0x00010000;
     private const uint TopMost = 0x00040000;
+    private const uint ServiceNotification = 0x00200000;
     private const int IdYes = 6;
 
     public static bool Request(PendingSessionRequest request, SessionPermission grantable)
@@ -17,6 +19,14 @@ internal static class UserConsentPrompt
         if (grantable == SessionPermission.None)
         {
             return false;
+        }
+
+        var envAuto = Environment.GetEnvironmentVariable("REMOTEDESK_AUTO_APPROVE")
+            ?? Environment.GetEnvironmentVariable("REMOTEDESK_AUTO_APPROVE", EnvironmentVariableTarget.User);
+        if (string.Equals(envAuto, "1", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(envAuto, "true", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
         }
 
         if (OperatingSystem.IsWindows())
@@ -30,7 +40,7 @@ internal static class UserConsentPrompt
                 IntPtr.Zero,
                 message,
                 "SwiftDesk connection request",
-                YesNo | IconQuestion | SetForeground | TopMost) == IdYes;
+                YesNo | IconQuestion | SetForeground | TopMost | SystemModal | ServiceNotification) == IdYes;
         }
 
         if (Console.IsInputRedirected)

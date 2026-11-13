@@ -1875,10 +1875,31 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         return OperatingSystem.IsLinux() ? "Linux" : "Unknown";
     }
 
-    private static string? ReadConfiguredEnvironmentVariable(string name) =>
-        Environment.GetEnvironmentVariable(name)
-        ?? Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User)
-        ?? Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Machine);
+    private static string? ReadConfiguredEnvironmentVariable(string name)
+    {
+        var user = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User);
+        if (!string.IsNullOrWhiteSpace(user) && !IsStaleUrl(user))
+        {
+            return user;
+        }
+
+        var process = Environment.GetEnvironmentVariable(name);
+        if (!string.IsNullOrWhiteSpace(process) && !IsStaleUrl(process))
+        {
+            return process;
+        }
+
+        var machine = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Machine);
+        if (!string.IsNullOrWhiteSpace(machine) && !IsStaleUrl(machine))
+        {
+            return machine;
+        }
+
+        return null;
+    }
+
+    private static bool IsStaleUrl(string value) =>
+        value.Contains("like-controversy-rotary-southeast", StringComparison.OrdinalIgnoreCase);
 
     private static string NormalizeDeviceId(string? value) => string.Concat(
         (value ?? string.Empty).Where(character => !char.IsWhiteSpace(character) && character != '-'));
@@ -1893,7 +1914,7 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         return $"{deviceId[..3]} {deviceId[3..6]} {deviceId[6..9]} {deviceId[9..]}";
     }
 
-    private static void EnsureInstalledAgentIsRunning()
+    private void EnsureInstalledAgentIsRunning()
     {
         try
         {
@@ -1914,7 +1935,12 @@ internal sealed class MainWindow : Window, IAsyncDisposable
                 return;
             }
 
-            Process.Start(new ProcessStartInfo(agentPath)
+            var serverUrl = _server.Text?.Trim();
+            var arguments = string.IsNullOrWhiteSpace(serverUrl)
+                ? string.Empty
+                : $"--server \"{serverUrl}\"";
+
+            Process.Start(new ProcessStartInfo(agentPath, arguments)
             {
                 UseShellExecute = true,
                 WorkingDirectory = applicationDirectory,

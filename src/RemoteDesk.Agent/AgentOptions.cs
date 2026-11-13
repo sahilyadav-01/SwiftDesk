@@ -52,10 +52,35 @@ internal sealed record AgentOptions(
     private static string? Get(
         IReadOnlyDictionary<string, string> values,
         string argumentName,
-        string environmentName) =>
-        values.GetValueOrDefault(argumentName)
-        ?? Environment.GetEnvironmentVariable(environmentName)
-        ?? Environment.GetEnvironmentVariable(environmentName, EnvironmentVariableTarget.User)
-        ?? Environment.GetEnvironmentVariable(environmentName, EnvironmentVariableTarget.Machine);
+        string environmentName)
+    {
+        if (values.TryGetValue(argumentName, out var value) && !string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        var user = Environment.GetEnvironmentVariable(environmentName, EnvironmentVariableTarget.User);
+        if (!string.IsNullOrWhiteSpace(user) && !IsStaleUrl(user))
+        {
+            return user;
+        }
+
+        var process = Environment.GetEnvironmentVariable(environmentName);
+        if (!string.IsNullOrWhiteSpace(process) && !IsStaleUrl(process))
+        {
+            return process;
+        }
+
+        var machine = Environment.GetEnvironmentVariable(environmentName, EnvironmentVariableTarget.Machine);
+        if (!string.IsNullOrWhiteSpace(machine) && !IsStaleUrl(machine))
+        {
+            return machine;
+        }
+
+        return null;
+    }
+
+    private static bool IsStaleUrl(string value) =>
+        value.Contains("like-controversy-rotary-southeast", StringComparison.OrdinalIgnoreCase);
 }
 
