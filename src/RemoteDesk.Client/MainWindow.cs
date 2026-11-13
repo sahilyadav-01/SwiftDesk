@@ -1497,7 +1497,7 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         finally
         {
             _connect.IsEnabled = true;
-            _connect.Content = "Connect  ->";
+            _connect.Content = "Connect →";
             _ = RefreshRecentSessionsAsync();
         }
     }
@@ -1790,6 +1790,12 @@ internal sealed class MainWindow : Window, IAsyncDisposable
 
         await clipboard.SetTextAsync(deviceId);
         SetStatus("This device's SwiftDesk ID was copied.");
+        _copyDeviceId.Content = "✓ Copied Address!";
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(2000);
+            Dispatcher.UIThread.Post(() => _copyDeviceId.Content = "Copy Address");
+        });
     }
 
     private void RefreshLocalDeviceId()
@@ -1965,15 +1971,16 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         }
     }
 
-    private Border CreateNavigationTab(string icon, string text, DashboardTab tab)
+    private Border CreateNavigationTab(string text, DashboardTab tab)
     {
         var label = new TextBlock
         {
-            Text = $"{icon}  {text}",
-            FontSize = 13.5,
+            Text = text,
+            FontSize = 14,
             FontWeight = tab == _activeTab ? FontWeight.SemiBold : FontWeight.Medium,
             Foreground = tab == _activeTab ? AccentBrush : SecondaryTextBrush,
             VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Center,
         };
 
         var indicator = new Border
@@ -1990,7 +1997,7 @@ internal sealed class MainWindow : Window, IAsyncDisposable
             Background = tab == _activeTab ? new SolidColorBrush(Color.Parse("#FEF3F2")) : Brushes.Transparent,
             CornerRadius = new CornerRadius(8),
             Cursor = new Cursor(StandardCursorType.Hand),
-            Padding = new Thickness(14, 8, 14, 6),
+            Padding = new Thickness(16, 8, 16, 6),
             Child = new StackPanel
             {
                 Spacing = 2,
@@ -2192,15 +2199,18 @@ internal sealed class MainWindow : Window, IAsyncDisposable
 
                 var connectBtn = new Button
                 {
-                    Content = "⚡ Connect",
+                    Content = "Connect",
                     Height = 32,
-                    Padding = new Thickness(10, 0),
+                    Padding = new Thickness(14, 0),
                     Background = AccentBrush,
                     Foreground = Brushes.White,
                     BorderThickness = new Thickness(0),
                     CornerRadius = new CornerRadius(6),
-                    FontSize = 12,
+                    FontSize = 12.5,
                     FontWeight = FontWeight.SemiBold,
+                    HorizontalContentAlignment = HorizontalAlignment.Center,
+                    VerticalContentAlignment = VerticalAlignment.Center,
+                    Cursor = new Cursor(StandardCursorType.Hand),
                     VerticalAlignment = VerticalAlignment.Center,
                     HorizontalAlignment = HorizontalAlignment.Right,
                 };
@@ -2216,13 +2226,17 @@ internal sealed class MainWindow : Window, IAsyncDisposable
                 {
                     Content = "Remove",
                     Height = 32,
-                    Padding = new Thickness(10, 0),
+                    Padding = new Thickness(12, 0),
                     Background = Brushes.Transparent,
                     Foreground = new SolidColorBrush(Color.Parse("#B42318")),
                     BorderBrush = new SolidColorBrush(Color.Parse("#FECDCA")),
                     BorderThickness = new Thickness(1),
                     CornerRadius = new CornerRadius(6),
                     FontSize = 12,
+                    FontWeight = FontWeight.Medium,
+                    HorizontalContentAlignment = HorizontalAlignment.Center,
+                    VerticalContentAlignment = VerticalAlignment.Center,
+                    Cursor = new Cursor(StandardCursorType.Hand),
                     VerticalAlignment = VerticalAlignment.Center,
                     HorizontalAlignment = HorizontalAlignment.Right,
                 };
@@ -2319,15 +2333,18 @@ internal sealed class MainWindow : Window, IAsyncDisposable
 
                 var connectBtn = new Button
                 {
-                    Content = "⚡ Connect",
+                    Content = "Connect",
                     Height = 32,
-                    Padding = new Thickness(12, 0),
+                    Padding = new Thickness(14, 0),
                     Background = AccentBrush,
                     Foreground = Brushes.White,
                     BorderThickness = new Thickness(0),
                     CornerRadius = new CornerRadius(6),
-                    FontSize = 12,
+                    FontSize = 12.5,
                     FontWeight = FontWeight.SemiBold,
+                    HorizontalContentAlignment = HorizontalAlignment.Center,
+                    VerticalContentAlignment = VerticalAlignment.Center,
+                    Cursor = new Cursor(StandardCursorType.Hand),
                     VerticalAlignment = VerticalAlignment.Center,
                     HorizontalAlignment = HorizontalAlignment.Right,
                 };
@@ -2406,7 +2423,7 @@ internal sealed class MainWindow : Window, IAsyncDisposable
 
         var status = new TextBlock
         {
-            Text = "🟢 Active (Local)",
+            Text = "● Active (Local)",
             Foreground = new SolidColorBrush(Color.Parse("#15803D")),
             FontWeight = FontWeight.Medium,
             FontSize = 12,
@@ -2473,7 +2490,7 @@ internal sealed class MainWindow : Window, IAsyncDisposable
                 {
                     new TextBlock
                     {
-                        Text = "🛡️ Attended Consent Engine",
+                        Text = "Attended Consent Engine",
                         FontWeight = FontWeight.Bold,
                         FontSize = 14,
                         Foreground = PrimaryTextBrush,
@@ -2489,6 +2506,25 @@ internal sealed class MainWindow : Window, IAsyncDisposable
             },
         };
         _invitationsHistoryList.Children.Add(consentCard);
+
+        var attendedReadyBadge = new Border
+        {
+            Background = new SolidColorBrush(Color.Parse("#EFF8FF")),
+            BorderBrush = new SolidColorBrush(Color.Parse("#B2DDFF")),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(8, 4),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = new TextBlock
+            {
+                Text = "Attended Ready",
+                FontSize = 11,
+                FontWeight = FontWeight.SemiBold,
+                Foreground = new SolidColorBrush(Color.Parse("#175CD3")),
+            },
+        };
+        Grid.SetColumn(attendedReadyBadge, 1);
 
         var activeRequest = new Border
         {
@@ -2526,23 +2562,7 @@ internal sealed class MainWindow : Window, IAsyncDisposable
                             },
                         },
                     },
-                    new Border
-                    {
-                        Background = new SolidColorBrush(Color.Parse("#EFF8FF")),
-                        BorderBrush = new SolidColorBrush(Color.Parse("#B2DDFF")),
-                        BorderThickness = new Thickness(1),
-                        CornerRadius = new CornerRadius(6),
-                        Padding = new Thickness(8, 4),
-                        HorizontalAlignment = HorizontalAlignment.Right,
-                        VerticalAlignment = VerticalAlignment.Center,
-                        Child = new TextBlock
-                        {
-                            Text = "Attended Ready",
-                            FontSize = 11,
-                            FontWeight = FontWeight.SemiBold,
-                            Foreground = new SolidColorBrush(Color.Parse("#175CD3")),
-                        },
-                    },
+                    attendedReadyBadge,
                 },
             },
         };
@@ -2634,6 +2654,9 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         button.FontWeight = FontWeight.SemiBold;
         button.FontSize = 15;
         button.HorizontalAlignment = HorizontalAlignment.Stretch;
+        button.HorizontalContentAlignment = HorizontalAlignment.Center;
+        button.VerticalContentAlignment = VerticalAlignment.Center;
+        button.Cursor = new Cursor(StandardCursorType.Hand);
     }
 
     private static void StyleSecondaryButton(Button button)
@@ -2646,6 +2669,9 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         button.CornerRadius = new CornerRadius(9);
         button.FontWeight = FontWeight.SemiBold;
         button.HorizontalAlignment = HorizontalAlignment.Stretch;
+        button.HorizontalContentAlignment = HorizontalAlignment.Center;
+        button.VerticalContentAlignment = VerticalAlignment.Center;
+        button.Cursor = new Cursor(StandardCursorType.Hand);
     }
 
     private static Bitmap? LoadAssetBitmap(string fileName)
