@@ -6,7 +6,8 @@ SwiftDesk is actively maintained and patched for security vulnerabilities. We st
 
 | Version | Supported          | Security Patches |
 | :--- | :--- | :--- |
-| **1.2.5** (Current) | :white_check_mark: | Full active support and security updates |
+| **1.2.6** (Current) | :white_check_mark: | Full active support and security updates |
+| 1.2.5 | :white_check_mark: | Active support |
 | **1.2.x** | :white_check_mark: | Supported; upgrade to latest recommended |
 | **1.1.x** | :white_check_mark: | Critical security patches only |
 | **< 1.1.0** | :x: | End of life; upgrade immediately |

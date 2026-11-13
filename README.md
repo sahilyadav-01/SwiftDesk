@@ -6,7 +6,7 @@
 
 **Enterprise-Grade, Cross-Platform Remote Support & Desktop Control**
 
-[![Release](https://img.shields.io/badge/Release-v1.2.5-blue?logo=github)](https://github.com/sahilyadav-01/SwiftDesk/releases)
+[![Release](https://img.shields.io/badge/Release-v1.2.6-blue?logo=github)](https://github.com/sahilyadav-01/SwiftDesk/releases)
 [![.NET 10 LTS](https://img.shields.io/badge/.NET-10.0%20LTS-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
 [![C# 14](https://img.shields.io/badge/C%23-14.0-239120?logo=csharp&logoColor=white)](https://learn.microsoft.com/en-us/dotnet/csharp/)
 [![Avalonia UI](https://img.shields.io/badge/UI-Avalonia%2012.1.4-8C52FF?logo=avalonia&logoColor=white)](https://avaloniaui.net/)
@@ -121,6 +121,18 @@ sequenceDiagram
 | **Clustered Relay Backplane** | **Implemented** | Redis Pub/Sub relay backplane enabling horizontal scaling across multiple signaling nodes |
 | **Database Persistence** | **Implemented** | Dual-mode: Production PostgreSQL (`Npgsql`) with connection pooling or in-memory for dev |
 | **Immutable Audit Logging** | **Implemented** | Structured audit trail for enrollment, session approvals, and connection events (`/api/audit`) |
+
+---
+
+## Release Notes: v1.2.6
+
+- Delivers fully functional and interactive navigation tabs: **Home**, **Favorites**, **Recent Sessions**, **Discovered**, and **Invitations**.
+- **Home**: Interactive quick connect hero with live device address, 4 responsive quick-action feature cards, and recent connections overview.
+- **Favorites**: Dedicated device bookmarking system with nickname aliases, persistent storage (`favorites.json`), and instant 1-click connect.
+- **Recent Sessions**: Comprehensive connection history dashboard with connection timestamps, status badges, and 1-click reconnect.
+- **Discovered**: Local network and signaling broker device discovery panel with network scanning and attended host readiness.
+- **Invitations**: Attended consent policy enforcement and instant one-click session invitation sharing.
+- Ships updated self-contained Windows x64 MSI installer as `SwiftDesk-1.2.6-Setup.msi`.
 
 ---
 
