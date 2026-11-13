@@ -66,9 +66,11 @@ $WixDefines = @(
 
 if (Get-Command "wix" -ErrorAction SilentlyContinue) {
     & wix build $WixFile -arch x64 -b PublishDir=$PublishDir @WixDefines -o $MsiDestination
-} elseif (Test-Path $DotnetPath) {
+}
+elseif (Test-Path $DotnetPath) {
     & $DotnetPath tool run wix build $WixFile -arch x64 -b PublishDir=$PublishDir @WixDefines -o $MsiDestination
-} else {
+}
+else {
     throw "WiX CLI not found. Packaged publish directory prepared at: $PublishDir"
 }
 

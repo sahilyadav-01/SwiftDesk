@@ -172,3 +172,4 @@ internal sealed class FavoritesStore(string? storagePath = null) : IDisposable
         _gate.Dispose();
     }
 }
+
