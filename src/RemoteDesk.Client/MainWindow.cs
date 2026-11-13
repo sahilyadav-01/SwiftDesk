@@ -206,8 +206,8 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         StyleSecondaryButton(_scanDiscoveredBtn);
         StylePrimaryButton(_copyInvitationBtn, 42);
 
-        _copyDeviceId.Height = 34;
-        _copyDeviceId.Padding = new Thickness(14, 0);
+        _copyDeviceId.Height = 36;
+        _copyDeviceId.Padding = new Thickness(16, 0);
         _copyDeviceId.Background = AccentSoftBg;
         _copyDeviceId.Foreground = AccentBrush;
         _copyDeviceId.BorderBrush = new SolidColorBrush(Color.Parse("#FFD0D3"));
@@ -217,7 +217,112 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         _copyDeviceId.FontSize = 13;
         _copyDeviceId.HorizontalAlignment = HorizontalAlignment.Center;
 
-        // --- TOP SECTION 1: CONNECT BAR ---
+        // --- TOP HERO SECTION: Dual Balanced Cards ---
+        // Left Card: This Computer / Your Address
+        _thisDeviceId.TextAlignment = TextAlignment.Center;
+        _thisDeviceId.HorizontalAlignment = HorizontalAlignment.Center;
+        _thisDeviceId.LetterSpacing = 1.5;
+        _thisDeviceId.FontSize = 32;
+
+        var statusDot = new Border
+        {
+            Width = 8,
+            Height = 8,
+            CornerRadius = new CornerRadius(4),
+            Background = new SolidColorBrush(Color.Parse("#12B76A")),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+
+        var hostPill = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Children =
+            {
+                statusDot,
+                new TextBlock
+                {
+                    Text = $"{Environment.MachineName} (Ready)",
+                    Foreground = SecondaryTextBrush,
+                    FontSize = 12,
+                    FontWeight = FontWeight.Medium,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+            },
+        };
+
+        var thisComputerHeader = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Auto),
+            },
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = "THIS COMPUTER",
+                    FontSize = 11,
+                    FontWeight = FontWeight.Bold,
+                    Foreground = AccentBrush,
+                    LetterSpacing = 1.0,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+                new Border
+                {
+                    Background = new SolidColorBrush(Color.Parse("#ECFDF3")),
+                    BorderBrush = new SolidColorBrush(Color.Parse("#A6F4C5")),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(999),
+                    Padding = new Thickness(8, 3),
+                    Child = new TextBlock
+                    {
+                        Text = "● Ready",
+                        FontSize = 11,
+                        FontWeight = FontWeight.SemiBold,
+                        Foreground = new SolidColorBrush(Color.Parse("#027A48")),
+                    },
+                },
+            },
+        };
+
+        var addressDisplayBox = new Border
+        {
+            Background = MutedBgBrush,
+            BorderBrush = CardBorderBrush,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(12, 14),
+            Child = new StackPanel
+            {
+                Spacing = 8,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Children = { _thisDeviceId, hostPill },
+            },
+        };
+
+        var thisAddressCard = Card(new StackPanel
+        {
+            Spacing = 12,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Children =
+            {
+                thisComputerHeader,
+                new TextBlock
+                {
+                    Text = "Your SwiftDesk Address",
+                    FontSize = 18,
+                    FontWeight = FontWeight.Bold,
+                    Foreground = PrimaryTextBrush,
+                },
+                addressDisplayBox,
+                _copyDeviceId,
+            },
+        });
+
+        // Right Card: Connect to Remote Device
         var connectBar = new Grid
         {
             ColumnDefinitions =
@@ -238,57 +343,93 @@ internal sealed class MainWindow : Window, IAsyncDisposable
             Children = { _viewScreen, _controlInput, _transferFiles, _reboot },
         };
 
-        var connectPanel = new StackPanel
+        var remoteAccessHeader = new Grid
         {
-            Spacing = 10,
-            Children = { connectBar, permissions },
-        };
-
-        // --- TOP SECTION 2: THIS DEVICE ADDRESS HERO ---
-        _thisDeviceId.TextAlignment = TextAlignment.Center;
-        _thisDeviceId.HorizontalAlignment = HorizontalAlignment.Center;
-        _thisDeviceId.LetterSpacing = 1.5;
-        _thisDeviceId.FontSize = 42;
-
-        var addressHero = Card(new StackPanel
-        {
-            Spacing = 10,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Auto),
+            },
             Children =
             {
                 new TextBlock
                 {
-                    Text = "Your Address",
-                    FontSize = 19,
-                    FontWeight = FontWeight.Medium,
-                    Foreground = PrimaryTextBrush,
-                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Text = "REMOTE ACCESS",
+                    FontSize = 11,
+                    FontWeight = FontWeight.Bold,
+                    Foreground = new SolidColorBrush(Color.Parse("#175CD3")),
+                    LetterSpacing = 1.0,
+                    VerticalAlignment = VerticalAlignment.Center,
                 },
-                _thisDeviceId,
-                _copyDeviceId,
-                new TextBlock
+                new Border
                 {
-                    Text = $"{Environment.MachineName}  •  Incoming sessions require approval",
-                    FontSize = 12,
-                    Foreground = SecondaryTextBrush,
-                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Background = new SolidColorBrush(Color.Parse("#EFF8FF")),
+                    BorderBrush = new SolidColorBrush(Color.Parse("#B2DDFF")),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(999),
+                    Padding = new Thickness(8, 3),
+                    Child = new TextBlock
+                    {
+                        Text = "Attended Session",
+                        FontSize = 11,
+                        FontWeight = FontWeight.SemiBold,
+                        Foreground = new SolidColorBrush(Color.Parse("#175CD3")),
+                    },
                 },
             },
+        };
+
+        var connectRemoteCard = Card(new StackPanel
+        {
+            Spacing = 12,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Children =
+            {
+                remoteAccessHeader,
+                new TextBlock
+                {
+                    Text = "Connect to Remote Device",
+                    FontSize = 18,
+                    FontWeight = FontWeight.Bold,
+                    Foreground = PrimaryTextBrush,
+                },
+                new TextBlock
+                {
+                    Text = "Enter the 12-digit SwiftDesk address to start a secure, attended session.",
+                    FontSize = 12,
+                    Foreground = SecondaryTextBrush,
+                },
+                connectBar,
+                permissions,
+            },
         });
+
+        var heroGrid = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(new GridLength(1.1, GridUnitType.Star)),
+                new ColumnDefinition(new GridLength(1.4, GridUnitType.Star)),
+            },
+            ColumnSpacing = 16,
+            Children = { thisAddressCard },
+        };
+        Grid.SetColumn(connectRemoteCard, 1);
+        heroGrid.Children.Add(connectRemoteCard);
 
         // --- NAVIGATION TABS BAR ---
         var navigation = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 28,
-            Margin = new Thickness(4, 4, 0, 8),
+            Spacing = 10,
+            Margin = new Thickness(0, 4, 0, 4),
             Children =
             {
-                CreateNavigationTab("Home", DashboardTab.Home),
-                CreateNavigationTab("Favorites", DashboardTab.Favorites),
-                CreateNavigationTab("Recent Sessions", DashboardTab.RecentSessions),
-                CreateNavigationTab("Discovered", DashboardTab.Discovered),
-                CreateNavigationTab("Invitations", DashboardTab.Invitations),
+                CreateNavigationTab("🏠", "Home", DashboardTab.Home),
+                CreateNavigationTab("⭐", "Favorites", DashboardTab.Favorites),
+                CreateNavigationTab("🕒", "Recent Sessions", DashboardTab.RecentSessions),
+                CreateNavigationTab("📡", "Discovered", DashboardTab.Discovered),
+                CreateNavigationTab("✉️", "Invitations", DashboardTab.Invitations),
             },
         };
 
@@ -304,27 +445,33 @@ internal sealed class MainWindow : Window, IAsyncDisposable
             },
             ColumnSpacing = 12,
         };
-        featureGrid.Children.Add(FeatureTile(
+        featureGrid.Children.Add(ModernFeatureTile(
+            "🖥️",
             "REMOTE SUPPORT",
-            "Connect to a remote device",
-            "Enter an address above to start a secure attended session.",
-            "#E5484D",
+            "Connect Remote Device",
+            "Start a 60 FPS attended WebRTC session with ultra-low latency.",
+            "#D92D20",
+            "#FEF3F2",
             () => _deviceId.Focus()));
 
-        var secureTile = FeatureTile(
-            "SECURE ACCESS",
-            "Consent on every connection",
-            "The remote user approves screen and input permissions.",
-            "#344054",
+        var secureTile = ModernFeatureTile(
+            "🛡️",
+            "ZERO-TRUST SECURITY",
+            "Consent On Every Session",
+            "Remote owner must explicitly approve screen and input permissions.",
+            "#027A48",
+            "#ECFDF3",
             () => SwitchTab(DashboardTab.Invitations));
         Grid.SetColumn(secureTile, 1);
         featureGrid.Children.Add(secureTile);
 
-        var transferTile = FeatureTile(
+        var transferTile = ModernFeatureTile(
+            "📁",
             "FILE TRANSFER",
-            "Send files safely",
-            "Integrity-checked transfers after explicit approval.",
-            "#D97706",
+            "Send Files Securely",
+            "SHA-256 chunked file delivery with end-to-end integrity checks.",
+            "#B54708",
+            "#FEF0C7",
             () =>
             {
                 _transferFiles.IsChecked = true;
@@ -333,11 +480,13 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         Grid.SetColumn(transferTile, 2);
         featureGrid.Children.Add(transferTile);
 
-        var discoveryTile = FeatureTile(
-            "DISCOVERY",
-            "Find your devices",
-            "Use the 12-digit SwiftDesk address from another computer.",
-            "#2563EB",
+        var discoveryTile = ModernFeatureTile(
+            "📡",
+            "LOCAL DISCOVERY",
+            "Find Nearby Devices",
+            "Auto-detect SwiftDesk instances on your local subnet and broker.",
+            "#175CD3",
+            "#EFF8FF",
             () => SwitchTab(DashboardTab.Discovered));
         Grid.SetColumn(discoveryTile, 3);
         featureGrid.Children.Add(discoveryTile);
@@ -358,9 +507,9 @@ internal sealed class MainWindow : Window, IAsyncDisposable
                     {
                         new TextBlock
                         {
-                            Text = "Recent Sessions",
-                            FontSize = 17,
-                            FontWeight = FontWeight.SemiBold,
+                            Text = "Recent Connections",
+                            FontSize = 16,
+                            FontWeight = FontWeight.Bold,
                             Foreground = PrimaryTextBrush,
                             VerticalAlignment = VerticalAlignment.Center,
                         },
@@ -958,8 +1107,7 @@ internal sealed class MainWindow : Window, IAsyncDisposable
             Spacing = 16,
             Children =
             {
-                connectPanel,
-                addressHero,
+                heroGrid,
                 navigation,
                 _homeTabPanel,
                 _favoritesTabPanel,
@@ -1768,13 +1916,13 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         }
     }
 
-    private Border CreateNavigationTab(string text, DashboardTab tab)
+    private Border CreateNavigationTab(string icon, string text, DashboardTab tab)
     {
         var label = new TextBlock
         {
-            Text = text,
-            FontSize = 14,
-            FontWeight = tab == _activeTab ? FontWeight.SemiBold : FontWeight.Normal,
+            Text = $"{icon}  {text}",
+            FontSize = 13.5,
+            FontWeight = tab == _activeTab ? FontWeight.SemiBold : FontWeight.Medium,
             Foreground = tab == _activeTab ? AccentBrush : SecondaryTextBrush,
             VerticalAlignment = VerticalAlignment.Center,
         };
@@ -1785,14 +1933,15 @@ internal sealed class MainWindow : Window, IAsyncDisposable
             CornerRadius = new CornerRadius(1.25),
             Background = tab == _activeTab ? AccentBrush : Brushes.Transparent,
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            Margin = new Thickness(0, 4, 0, 0),
+            Margin = new Thickness(0, 6, 0, 0),
         };
 
         var container = new Border
         {
-            Background = Brushes.Transparent,
+            Background = tab == _activeTab ? new SolidColorBrush(Color.Parse("#FEF3F2")) : Brushes.Transparent,
+            CornerRadius = new CornerRadius(8),
             Cursor = new Cursor(StandardCursorType.Hand),
-            Padding = new Thickness(2, 6, 2, 6),
+            Padding = new Thickness(14, 8, 14, 6),
             Child = new StackPanel
             {
                 Spacing = 2,
@@ -1808,12 +1957,13 @@ internal sealed class MainWindow : Window, IAsyncDisposable
     private void SwitchTab(DashboardTab tab)
     {
         _activeTab = tab;
-        foreach (var (t, label, indicator, _) in _navTabs)
+        foreach (var (t, label, indicator, container) in _navTabs)
         {
             var active = t == tab;
             label.Foreground = active ? AccentBrush : SecondaryTextBrush;
-            label.FontWeight = active ? FontWeight.SemiBold : FontWeight.Normal;
+            label.FontWeight = active ? FontWeight.SemiBold : FontWeight.Medium;
             indicator.Background = active ? AccentBrush : Brushes.Transparent;
+            container.Background = active ? new SolidColorBrush(Color.Parse("#FEF3F2")) : Brushes.Transparent;
         }
 
         _homeTabPanel.IsVisible = tab == DashboardTab.Home;
@@ -1840,39 +1990,67 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         }
     }
 
-    private static Border FeatureTile(string eyebrow, string title, string description, string background, Action? onClick = null)
+    private static Border ModernFeatureTile(string icon, string eyebrow, string title, string description, string accentHex, string bgTintHex, Action? onClick = null)
     {
-        var tile = new Border
+        var iconBadge = new Border
         {
-            Background = new SolidColorBrush(Color.Parse(background)),
+            Width = 36,
+            Height = 36,
+            CornerRadius = new CornerRadius(8),
+            Background = new SolidColorBrush(Color.Parse(bgTintHex)),
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = new TextBlock
+            {
+                Text = icon,
+                FontSize = 18,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+            },
+        };
+
+        var eyebrowBlock = new TextBlock
+        {
+            Text = eyebrow,
+            FontSize = 10.5,
+            FontWeight = FontWeight.Bold,
+            Foreground = new SolidColorBrush(Color.Parse(accentHex)),
+            LetterSpacing = 0.8,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+
+        var headerRow = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 10,
+            Children = { iconBadge, eyebrowBlock },
+        };
+
+        var card = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = CardBorderBrush,
+            BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(12),
             Padding = new Thickness(18, 16),
             Cursor = onClick != null ? new Cursor(StandardCursorType.Hand) : Cursor.Default,
             Child = new StackPanel
             {
-                Spacing = 6,
+                Spacing = 8,
                 Children =
                 {
-                    new TextBlock
-                    {
-                        Text = eyebrow,
-                        FontSize = 10,
-                        FontWeight = FontWeight.Bold,
-                        Foreground = new SolidColorBrush(Color.FromArgb(220, 255, 255, 255)),
-                        LetterSpacing = 1.0,
-                    },
+                    headerRow,
                     new TextBlock
                     {
                         Text = title,
                         FontSize = 15,
-                        FontWeight = FontWeight.Bold,
-                        Foreground = Brushes.White,
+                        FontWeight = FontWeight.SemiBold,
+                        Foreground = PrimaryTextBrush,
                     },
                     new TextBlock
                     {
                         Text = description,
                         FontSize = 12,
-                        Foreground = new SolidColorBrush(Color.FromArgb(200, 255, 255, 255)),
+                        Foreground = SecondaryTextBrush,
                         TextWrapping = TextWrapping.Wrap,
                     },
                 },
@@ -1881,10 +2059,10 @@ internal sealed class MainWindow : Window, IAsyncDisposable
 
         if (onClick != null)
         {
-            tile.PointerPressed += (_, _) => onClick();
+            card.PointerPressed += (_, _) => onClick();
         }
 
-        return tile;
+        return card;
     }
 
     private async Task RefreshFavoritesViewAsync()
