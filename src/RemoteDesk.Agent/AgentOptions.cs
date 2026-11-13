@@ -50,7 +50,7 @@ internal sealed record AgentOptions(
     }
 
     private static string? Get(
-        IReadOnlyDictionary<string, string> values,
+        Dictionary<string, string> values,
         string argumentName,
         string environmentName)
     {
