@@ -55,6 +55,19 @@ internal sealed class RecentSessionHistory(string? storagePath = null) : IDispos
         CancellationToken cancellationToken = default) =>
         MergeAndSaveAsync([session], MaximumEntries, cancellationToken);
 
+    public async Task ClearAsync(CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            await SaveWithoutLockAsync([], cancellationToken);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     internal static IReadOnlyList<RecentSessionResponse> Merge(
         IEnumerable<RecentSessionResponse> cached,
         IEnumerable<RecentSessionResponse> current,
