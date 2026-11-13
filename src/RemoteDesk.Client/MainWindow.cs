@@ -224,15 +224,18 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         StylePrimaryButton(_copyInvitationBtn, 42);
 
         _copyDeviceId.Height = 36;
-        _copyDeviceId.Padding = new Thickness(16, 0);
-        _copyDeviceId.Background = AccentSoftBg;
-        _copyDeviceId.Foreground = AccentBrush;
-        _copyDeviceId.BorderBrush = new SolidColorBrush(Color.Parse("#FFD0D3"));
+        _copyDeviceId.Padding = new Thickness(20, 0);
+        _copyDeviceId.Background = new SolidColorBrush(Color.Parse("#FEF3F2"));
+        _copyDeviceId.Foreground = new SolidColorBrush(Color.Parse("#D92D20"));
+        _copyDeviceId.BorderBrush = new SolidColorBrush(Color.Parse("#FDA29B"));
         _copyDeviceId.BorderThickness = new Thickness(1);
         _copyDeviceId.CornerRadius = new CornerRadius(8);
-        _copyDeviceId.FontWeight = FontWeight.SemiBold;
-        _copyDeviceId.FontSize = 13;
+        _copyDeviceId.FontWeight = FontWeight.Bold;
+        _copyDeviceId.FontSize = 13.5;
         _copyDeviceId.HorizontalAlignment = HorizontalAlignment.Center;
+        _copyDeviceId.HorizontalContentAlignment = HorizontalAlignment.Center;
+        _copyDeviceId.VerticalContentAlignment = VerticalAlignment.Center;
+        _copyDeviceId.Cursor = new Cursor(StandardCursorType.Hand);
 
         // --- TOP HERO SECTION: Dual Balanced Cards ---
         // Left Card: This Computer / Your Address
@@ -269,6 +272,25 @@ internal sealed class MainWindow : Window, IAsyncDisposable
             },
         };
 
+        var readyBadge = new Border
+        {
+            Background = new SolidColorBrush(Color.Parse("#ECFDF3")),
+            BorderBrush = new SolidColorBrush(Color.Parse("#A6F4C5")),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(999),
+            Padding = new Thickness(10, 4),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = new TextBlock
+            {
+                Text = "● Ready",
+                FontSize = 11,
+                FontWeight = FontWeight.SemiBold,
+                Foreground = new SolidColorBrush(Color.Parse("#027A48")),
+            },
+        };
+        Grid.SetColumn(readyBadge, 1);
+
         var thisComputerHeader = new Grid
         {
             ColumnDefinitions =
@@ -287,21 +309,7 @@ internal sealed class MainWindow : Window, IAsyncDisposable
                     LetterSpacing = 1.0,
                     VerticalAlignment = VerticalAlignment.Center,
                 },
-                new Border
-                {
-                    Background = new SolidColorBrush(Color.Parse("#ECFDF3")),
-                    BorderBrush = new SolidColorBrush(Color.Parse("#A6F4C5")),
-                    BorderThickness = new Thickness(1),
-                    CornerRadius = new CornerRadius(999),
-                    Padding = new Thickness(8, 3),
-                    Child = new TextBlock
-                    {
-                        Text = "● Ready",
-                        FontSize = 11,
-                        FontWeight = FontWeight.SemiBold,
-                        Foreground = new SolidColorBrush(Color.Parse("#027A48")),
-                    },
-                },
+                readyBadge,
             },
         };
 
@@ -360,6 +368,25 @@ internal sealed class MainWindow : Window, IAsyncDisposable
             Children = { _viewScreen, _controlInput, _transferFiles, _reboot },
         };
 
+        var attendedBadge = new Border
+        {
+            Background = new SolidColorBrush(Color.Parse("#EFF8FF")),
+            BorderBrush = new SolidColorBrush(Color.Parse("#B2DDFF")),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(999),
+            Padding = new Thickness(10, 4),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = new TextBlock
+            {
+                Text = "Attended Session",
+                FontSize = 11,
+                FontWeight = FontWeight.SemiBold,
+                Foreground = new SolidColorBrush(Color.Parse("#175CD3")),
+            },
+        };
+        Grid.SetColumn(attendedBadge, 1);
+
         var remoteAccessHeader = new Grid
         {
             ColumnDefinitions =
@@ -378,21 +405,7 @@ internal sealed class MainWindow : Window, IAsyncDisposable
                     LetterSpacing = 1.0,
                     VerticalAlignment = VerticalAlignment.Center,
                 },
-                new Border
-                {
-                    Background = new SolidColorBrush(Color.Parse("#EFF8FF")),
-                    BorderBrush = new SolidColorBrush(Color.Parse("#B2DDFF")),
-                    BorderThickness = new Thickness(1),
-                    CornerRadius = new CornerRadius(999),
-                    Padding = new Thickness(8, 3),
-                    Child = new TextBlock
-                    {
-                        Text = "Attended Session",
-                        FontSize = 11,
-                        FontWeight = FontWeight.SemiBold,
-                        Foreground = new SolidColorBrush(Color.Parse("#175CD3")),
-                    },
-                },
+                attendedBadge,
             },
         };
 
@@ -442,11 +455,11 @@ internal sealed class MainWindow : Window, IAsyncDisposable
             Margin = new Thickness(0, 4, 0, 4),
             Children =
             {
-                CreateNavigationTab("🏠", "Home", DashboardTab.Home),
-                CreateNavigationTab("⭐", "Favorites", DashboardTab.Favorites),
-                CreateNavigationTab("🕒", "Recent Sessions", DashboardTab.RecentSessions),
-                CreateNavigationTab("📡", "Discovered", DashboardTab.Discovered),
-                CreateNavigationTab("✉️", "Invitations", DashboardTab.Invitations),
+                CreateNavigationTab("Home", DashboardTab.Home),
+                CreateNavigationTab("Favorites", DashboardTab.Favorites),
+                CreateNavigationTab("Recent Sessions", DashboardTab.RecentSessions),
+                CreateNavigationTab("Discovered", DashboardTab.Discovered),
+                CreateNavigationTab("Invitations", DashboardTab.Invitations),
             },
         };
 
