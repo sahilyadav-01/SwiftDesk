@@ -451,7 +451,7 @@ Invoke-RestMethod http://127.0.0.1:5080/health
 Invoke-RestMethod https://<generated-hostname>.trycloudflare.com/health
 ```
 
-Pass the generated `https://*.trycloudflare.com` URL as `--server` to the Host Agent and Client, or use it as the MSI builder's `-ServerUrl` value.
+Pass the generated `https://*.trycloudflare.com` URL as `--server` to the Host Agent and Client. For a temporary MSI test build, pass it as the builder's `-ServerUrl` value together with `-AllowEphemeralTunnel`; distributable builds require a stable signaling URL.
 
 > [!WARNING]
 > Quick Tunnel URLs expire when the tunnel process stops and may not resolve afterward. Generate a fresh URL for each temporary test session. Use a named Cloudflare Tunnel, Railway domain, or another stable HTTPS endpoint for deployed installers.

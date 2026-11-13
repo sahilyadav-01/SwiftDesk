@@ -9,14 +9,33 @@
 param(
     [string]$Configuration = "Release",
     [string]$OutputMsi = "SwiftDesk-1.2.6-Setup.msi",
-    [string]$ServerUrl = "https://like-controversy-rotary-southeast.trycloudflare.com",
-    [string]$BootstrapToken = "Jwm6reOSdWLx5Q0Y2hzA6dcurwYUbcHyTKOdqMosdEM=",
-    [string]$OperatorKey = "bdVrcJpCp2ih6UCl6f1rwoynECaWOte1FY2Y3WPtyjo="
+    [Parameter(Mandatory = $true)]
+    [string]$ServerUrl,
+    [Parameter(Mandatory = $true)]
+    [string]$BootstrapToken,
+    [Parameter(Mandatory = $true)]
+    [string]$OperatorKey,
+    [switch]$AllowEphemeralTunnel
 )
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $PublishDir = Join-Path $PSScriptRoot "publish"
+
+$ParsedServerUrl = $null
+if (-not [Uri]::TryCreate($ServerUrl, [UriKind]::Absolute, [ref]$ParsedServerUrl) -or
+    $ParsedServerUrl.Scheme -notin @("http", "https")) {
+    throw "ServerUrl must be an absolute HTTP or HTTPS URL."
+}
+
+if ($ParsedServerUrl.Host.EndsWith(".trycloudflare.com", [StringComparison]::OrdinalIgnoreCase) -and
+    -not $AllowEphemeralTunnel) {
+    throw "Quick Tunnel URLs expire and must not be embedded in a distributable installer. Use a stable signaling URL, or pass -AllowEphemeralTunnel for a temporary test build."
+}
+
+if ([string]::IsNullOrWhiteSpace($BootstrapToken) -or [string]::IsNullOrWhiteSpace($OperatorKey)) {
+    throw "BootstrapToken and OperatorKey must be non-empty."
+}
 
 Write-Host "==> Publishing SwiftDesk binaries ($Configuration)..." -ForegroundColor Cyan
 if (Test-Path $PublishDir) { Remove-Item $PublishDir -Recurse -Force }
