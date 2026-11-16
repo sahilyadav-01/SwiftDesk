@@ -119,73 +119,85 @@ try
     {
         try
         {
-            await api.HeartbeatAsync(
-                deviceId,
-                deviceSecret,
-                new HeartbeatRequest("0.1.0", capabilities),
-                shutdown.Token);
-        }
-        catch (SignalingApiException exception) when (
-            exception.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.NotFound
-            && !string.IsNullOrWhiteSpace(options.BootstrapToken))
-        {
-            // A non-persistent signaling node can lose its device registry after a
-            // restart. Recover without terminating the Agent so the host becomes
-            // reachable again and the Client can display its newly issued address.
-            Console.WriteLine("The server no longer recognizes this device. Re-enrolling automaticallyâ€¦");
-            var enrollment = await api.EnrollAsync(
-                options.BootstrapToken,
-                new DeviceEnrollmentRequest(options.DeviceName, capabilities.Platform),
-                shutdown.Token);
-            deviceId = enrollment.DeviceId;
-            deviceSecret = enrollment.DeviceSecret;
-            PersistIdentity(deviceId, deviceSecret);
-            handledRequests.Clear();
-            Console.WriteLine($"SwiftDesk ID refreshed: {deviceId}");
-            continue;
-        }
-
-        var pending = await api.GetPendingSessionsAsync(deviceId, deviceSecret, shutdown.Token);
-        foreach (var request in pending.Where(item => handledRequests.Add(item.SessionId)))
-        {
-            var grantable = request.RequestedPermissions & availablePermissions;
-            var approve = options.AutoApproveFiles
-                && request.RequestedPermissions == SessionPermission.TransferFiles
-                && grantable == SessionPermission.TransferFiles;
-
-            if (!approve)
+            try
             {
-                approve = UserConsentPrompt.Request(request, grantable);
+                await api.HeartbeatAsync(
+                    deviceId,
+                    deviceSecret,
+                    new HeartbeatRequest("0.1.0", capabilities),
+                    shutdown.Token);
             }
-
-            approve &= grantable != SessionPermission.None;
-            var decision = await api.ApproveSessionAsync(
-                deviceId,
-                deviceSecret,
-                request.SessionId,
-                new ApproveSessionRequest(approve, approve ? grantable : SessionPermission.None),
-                shutdown.Token);
-
-            if (!approve || decision.AgentTicket is null)
+            catch (SignalingApiException exception) when (
+                exception.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.NotFound
+                && !string.IsNullOrWhiteSpace(options.BootstrapToken))
             {
-                Console.WriteLine($"Declined session {request.SessionId}.");
+                // A non-persistent signaling node can lose its device registry after a
+                // restart. Recover without terminating the Agent so the host becomes
+                // reachable again and the Client can display its newly issued address.
+                Console.WriteLine("The server no longer recognizes this device. Re-enrolling automatically…");
+                var enrollment = await api.EnrollAsync(
+                    options.BootstrapToken,
+                    new DeviceEnrollmentRequest(options.DeviceName, capabilities.Platform),
+                    shutdown.Token);
+                deviceId = enrollment.DeviceId;
+                deviceSecret = enrollment.DeviceSecret;
+                PersistIdentity(deviceId, deviceSecret);
+                handledRequests.Clear();
+                Console.WriteLine($"SwiftDesk ID refreshed: {deviceId}");
                 continue;
             }
 
-            Console.WriteLine($"Approved session {request.SessionId} with {grantable}.");
-            var sessionTask = RunSessionAsync(
-                api,
-                platform,
-                deviceId,
-                request,
-                grantable,
-                decision.AgentTicket,
-                options.DownloadDirectory,
-                shutdown.Token);
-            activeSessions.Add(sessionTask);
+            var pending = await api.GetPendingSessionsAsync(deviceId, deviceSecret, shutdown.Token);
+            foreach (var request in pending.Where(item => handledRequests.Add(item.SessionId)))
+            {
+                var grantable = request.RequestedPermissions & availablePermissions;
+                var approve = options.AutoApproveFiles
+                    && request.RequestedPermissions == SessionPermission.TransferFiles
+                    && grantable == SessionPermission.TransferFiles;
+
+                if (!approve)
+                {
+                    approve = UserConsentPrompt.Request(request, grantable);
+                }
+
+                approve &= grantable != SessionPermission.None;
+                var decision = await api.ApproveSessionAsync(
+                    deviceId,
+                    deviceSecret,
+                    request.SessionId,
+                    new ApproveSessionRequest(approve, approve ? grantable : SessionPermission.None),
+                    shutdown.Token);
+
+                if (!approve || decision.AgentTicket is null)
+                {
+                    Console.WriteLine($"Declined session {request.SessionId}.");
+                    continue;
+                }
+
+                Console.WriteLine($"Approved session {request.SessionId} with {grantable}.");
+                var sessionTask = RunSessionAsync(
+                    api,
+                    platform,
+                    deviceId,
+                    request,
+                    grantable,
+                    decision.AgentTicket,
+                    options.DownloadDirectory,
+                    shutdown.Token);
+                activeSessions.Add(sessionTask);
+            }
+
+            activeSessions.RemoveWhere(task => task.IsCompleted);
+        }
+        catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
+        {
+            break;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or SignalingApiException or IOException)
+        {
+            Console.WriteLine($"Signaling connection transient error: {exception.Message}. Retrying…");
         }
 
-        activeSessions.RemoveWhere(task => task.IsCompleted);
         await Task.Delay(TimeSpan.FromSeconds(3), shutdown.Token);
     }
 }
