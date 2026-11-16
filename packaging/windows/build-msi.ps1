@@ -8,7 +8,7 @@
 
 param(
     [string]$Configuration = "Release",
-    [string]$OutputMsi = "SwiftDesk-1.2.6-Setup.msi",
+    [string]$OutputMsi = "SwiftDesk-1.2.7-Setup.msi",
     [Parameter(Mandatory = $true)]
     [string]$ServerUrl,
     [Parameter(Mandatory = $true)]

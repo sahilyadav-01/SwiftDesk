@@ -6,7 +6,7 @@
 
 **Enterprise-Grade, Cross-Platform Remote Support & Desktop Control**
 
-[![Release](https://img.shields.io/badge/Release-v1.2.6-blue?logo=github)](https://github.com/sahilyadav-01/SwiftDesk/releases)
+[![Release](https://img.shields.io/badge/Release-v1.2.7-blue?logo=github)](https://github.com/sahilyadav-01/SwiftDesk/releases)
 [![.NET 10 LTS](https://img.shields.io/badge/.NET-10.0%20LTS-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
 [![C# 14](https://img.shields.io/badge/C%23-14.0-239120?logo=csharp&logoColor=white)](https://learn.microsoft.com/en-us/dotnet/csharp/)
 [![Avalonia UI](https://img.shields.io/badge/UI-Avalonia%2012.1.4-8C52FF?logo=avalonia&logoColor=white)](https://avaloniaui.net/)
@@ -28,6 +28,7 @@ SwiftDesk provides secure, owner-consented remote support across Windows, Linux 
 
 - [Architecture Overview](#architecture-overview)
 - [Current Status & Capabilities](#current-status--capabilities)
+- [Release Notes: v1.2.7](#release-notes-v127)
 - [Release Notes: v1.2.6](#release-notes-v126)
 - [Release Notes: v1.2.5](#release-notes-v125)
 - [Repository Structure](#repository-structure)
@@ -122,6 +123,21 @@ sequenceDiagram
 | **Clustered Relay Backplane** | **Implemented** | Redis Pub/Sub relay backplane enabling horizontal scaling across multiple signaling nodes |
 | **Database Persistence** | **Implemented** | Dual-mode: Production PostgreSQL (`Npgsql`) with connection pooling or in-memory for dev |
 | **Immutable Audit Logging** | **Implemented** | Structured audit trail for enrollment, session approvals, and connection events (`/api/audit`) |
+
+---
+
+## Release Notes: v1.2.7
+
+- **Resilient Host Agent Loop**:
+  - Encapsulated session polling and request approvals in protective exception handling to prevent Agent termination from transient HTTP/Signaling glitches or temporary network drops.
+  - Automatic reconnection, device state recovery, and continuous background listening without requiring manual host restarts.
+- **Self-Contained Distribution & Packaging**:
+  - Full self-contained .NET 10 compilation for all target binaries (`RemoteDesk.Client`, `RemoteDesk.Agent`, `RemoteDesk.PrivilegedHelper`), eliminating any runtime dependency errors on machines without .NET installed.
+  - Updated WiX v4 installer manifest and PowerShell builder producing `SwiftDesk-1.2.7-Setup.msi`.
+- **Environment & Configuration Precision**:
+  - Filtered stale/ephemeral tunnel URLs across Agent and Client options with seamless fallback to local and custom signaling endpoints.
+  - Added support for automated testing approval mode via `REMOTEDESK_AUTO_APPROVE`.
+- Ships the updated Windows x64 MSI installer as `SwiftDesk-1.2.7-Setup.msi`.
 
 ---
 
@@ -312,7 +328,7 @@ SwiftDesk includes production packaging workflows for Windows, Linux, and macOS,
 
 The Windows installer compiles via WiX v4 into an enterprise MSI package that installs application binaries, registers the `SwiftDeskPrivilegedHelper` Windows Service, and sets up restricted ACLs on `%ProgramData%\SwiftDesk`.
 
-The current Windows release is **v1.2.6**. Always pass the signaling URL explicitly when producing an installer for distribution; Cloudflare Quick Tunnel hostnames are temporary and should not be treated as permanent production endpoints.
+The current Windows release is **v1.2.7**. Always pass the signaling URL explicitly when producing an installer for distribution; Cloudflare Quick Tunnel hostnames are temporary and should not be treated as permanent production endpoints.
 
 ```powershell
 # Build the Windows MSI installer (pre-configured with your signaling server & keys)
@@ -322,13 +338,13 @@ The current Windows release is **v1.2.6**. Always pass the signaling URL explici
   -OperatorKey "your-operator-key"
 
 # Install silently (with automated Windows Service registration)
-msiexec /i .\packaging\windows\SwiftDesk-1.2.6-Setup.msi /qn
+msiexec /i .\packaging\windows\SwiftDesk-1.2.7-Setup.msi /qn
 
 # Verify the Windows Service status
 Get-Service SwiftDeskPrivilegedHelper
 
 # Uninstall
-msiexec /x .\packaging\windows\SwiftDesk-1.2.6-Setup.msi /qn
+msiexec /x .\packaging\windows\SwiftDesk-1.2.7-Setup.msi /qn
 ```
 
 ### 2. Linux Packages (Debian & RPM)
