@@ -28,6 +28,7 @@ SwiftDesk provides secure, owner-consented remote support across Windows, Linux 
 
 - [Architecture Overview](#architecture-overview)
 - [Current Status & Capabilities](#current-status--capabilities)
+- [Release Notes: v1.2.6](#release-notes-v126)
 - [Release Notes: v1.2.5](#release-notes-v125)
 - [Repository Structure](#repository-structure)
 - [Prerequisites](#prerequisites)
@@ -132,6 +133,16 @@ sequenceDiagram
 - **Recent Sessions**: Comprehensive connection history dashboard with connection timestamps, status badges, and 1-click reconnect.
 - **Discovered**: Local network and signaling broker device discovery panel with network scanning and attended host readiness.
 - **Invitations**: Attended consent policy enforcement and instant one-click session invitation sharing.
+- **UI & Interaction Refinements**:
+  - Centered text and content alignment across all primary and secondary buttons (`HorizontalContentAlignment = Center`, `VerticalContentAlignment = Center`) with hand cursor cues.
+  - High-contrast **Copy Address** button with dynamic real-time click feedback (`"✓ Copied Address!"`).
+  - Fixed badge layout stretch bug to prevent status pill overlap over card headers (`Grid.SetColumn(..., 1)`).
+  - Replaced corrupted monochrome emoji glyphs on Windows desktop with crisp, modern typography.
+- **Signaling & Connection Resilience**:
+  - Registered `JsonStringEnumConverter` across ASP.NET Core Minimal APIs and client transport for robust flag-based permission serialization (`ViewScreen, ControlInput`).
+  - Prioritized User environment variables over stale Machine-level tunnel cache traps.
+  - Desktop client automatically spawns host agent passing its explicit `--server` endpoint for instant local pairing.
+  - Enhanced Windows Attended Consent dialog with `MB_SYSTEMMODAL` and `MB_TOPMOST` flags to ensure approval prompts always appear in foreground.
 - Ships updated self-contained Windows x64 MSI installer as `SwiftDesk-1.2.6-Setup.msi`.
 
 ---
@@ -301,7 +312,7 @@ SwiftDesk includes production packaging workflows for Windows, Linux, and macOS,
 
 The Windows installer compiles via WiX v4 into an enterprise MSI package that installs application binaries, registers the `SwiftDeskPrivilegedHelper` Windows Service, and sets up restricted ACLs on `%ProgramData%\SwiftDesk`.
 
-The current Windows release is **v1.2.5**. Always pass the signaling URL explicitly when producing an installer for distribution; Cloudflare Quick Tunnel hostnames are temporary and should not be treated as permanent production endpoints.
+The current Windows release is **v1.2.6**. Always pass the signaling URL explicitly when producing an installer for distribution; Cloudflare Quick Tunnel hostnames are temporary and should not be treated as permanent production endpoints.
 
 ```powershell
 # Build the Windows MSI installer (pre-configured with your signaling server & keys)
@@ -311,13 +322,13 @@ The current Windows release is **v1.2.5**. Always pass the signaling URL explici
   -OperatorKey "your-operator-key"
 
 # Install silently (with automated Windows Service registration)
-msiexec /i .\packaging\windows\SwiftDesk-1.2.5-Setup.msi /qn
+msiexec /i .\packaging\windows\SwiftDesk-1.2.6-Setup.msi /qn
 
 # Verify the Windows Service status
 Get-Service SwiftDeskPrivilegedHelper
 
 # Uninstall
-msiexec /x .\packaging\windows\SwiftDesk-1.2.5-Setup.msi /qn
+msiexec /x .\packaging\windows\SwiftDesk-1.2.6-Setup.msi /qn
 ```
 
 ### 2. Linux Packages (Debian & RPM)
