@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text.Json;
 using RemoteDesk.Core;
 using RemoteDesk.Security;
 
@@ -33,10 +34,108 @@ internal sealed class DeviceRecord(
     public PlatformCapabilityReport? Capabilities { get; set; }
 }
 
-public sealed class DeviceRegistry(TimeProvider timeProvider) : IDeviceStore
+internal sealed record PersistedDeviceItem(
+    string DeviceId,
+    string Name,
+    string Platform,
+    string SecretHashBase64,
+    DateTimeOffset EnrolledAt);
+
+public sealed class DeviceRegistry : IDeviceStore
 {
     private readonly ConcurrentDictionary<string, DeviceRecord> _devices = new(StringComparer.Ordinal);
-    private readonly TimeProvider _timeProvider = timeProvider;
+    private readonly TimeProvider _timeProvider;
+    private readonly string? _storagePath;
+
+    public DeviceRegistry(TimeProvider timeProvider, string? storagePath = null)
+    {
+        _timeProvider = timeProvider;
+        _storagePath = storagePath ?? GetDefaultStoragePath();
+        LoadPersistedDevices();
+    }
+
+    private static string GetDefaultStoragePath()
+    {
+        var localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (string.IsNullOrWhiteSpace(localData))
+        {
+            localData = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".local",
+                "share");
+        }
+
+        return Path.Combine(localData, "SwiftDesk", "signaling-devices.json");
+    }
+
+    private void LoadPersistedDevices()
+    {
+        if (string.IsNullOrWhiteSpace(_storagePath) || !File.Exists(_storagePath))
+        {
+            return;
+        }
+
+        try
+        {
+            var json = File.ReadAllText(_storagePath);
+            var items = JsonSerializer.Deserialize<List<PersistedDeviceItem>>(json);
+            if (items is null)
+            {
+                return;
+            }
+
+            foreach (var item in items)
+            {
+                if (string.IsNullOrWhiteSpace(item.DeviceId) || string.IsNullOrWhiteSpace(item.SecretHashBase64))
+                {
+                    continue;
+                }
+
+                var record = new DeviceRecord(
+                    item.DeviceId,
+                    item.Name ?? "Unknown",
+                    item.Platform ?? "Unknown",
+                    Convert.FromBase64String(item.SecretHashBase64),
+                    item.EnrolledAt);
+                _devices.TryAdd(item.DeviceId, record);
+            }
+        }
+        catch
+        {
+            // Ignore persistence read failures on startup
+        }
+    }
+
+    private void SavePersistedDevices()
+    {
+        if (string.IsNullOrWhiteSpace(_storagePath))
+        {
+            return;
+        }
+
+        try
+        {
+            var directory = Path.GetDirectoryName(_storagePath);
+            if (!string.IsNullOrWhiteSpace(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            var items = _devices.Values.Select(d => new PersistedDeviceItem(
+                d.DeviceId,
+                d.Name,
+                d.Platform,
+                Convert.ToBase64String(d.SecretHash),
+                d.EnrolledAt)).ToList();
+
+            var json = JsonSerializer.Serialize(items, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(_storagePath, json);
+        }
+        catch
+        {
+            // Ignore persistence write failures
+        }
+    }
 
     public EnrolledDevice Enroll(string name, string platform)
     {
@@ -52,6 +151,7 @@ public sealed class DeviceRegistry(TimeProvider timeProvider) : IDeviceStore
                 _timeProvider.GetUtcNow());
             if (_devices.TryAdd(id, record))
             {
+                SavePersistedDevices();
                 return new EnrolledDevice(id, secret);
             }
         }
@@ -61,10 +161,38 @@ public sealed class DeviceRegistry(TimeProvider timeProvider) : IDeviceStore
 
     public bool Exists(string deviceId) => _devices.ContainsKey(deviceId);
 
-    public bool Authenticate(string deviceId, string? secret) =>
-        secret is not null
-        && _devices.TryGetValue(deviceId, out var device)
-        && SecretHasher.Verify(secret, device.SecretHash);
+    public bool Authenticate(string deviceId, string? secret)
+    {
+        if (string.IsNullOrWhiteSpace(secret))
+        {
+            return false;
+        }
+
+        if (_devices.TryGetValue(deviceId, out var device))
+        {
+            return SecretHasher.Verify(secret, device.SecretHash);
+        }
+
+        // Resilient recovery: If a previously enrolled device authenticates with its secret
+        // (for example across signaling server restarts in standalone mode), automatically register
+        // it so its existing SwiftDesk ID remains functional and valid.
+        if (deviceId.Length == 12 && deviceId.All(char.IsAsciiDigit))
+        {
+            var record = new DeviceRecord(
+                deviceId,
+                $"Device-{deviceId[..4]}",
+                "Unknown",
+                SecretHasher.Hash(secret),
+                _timeProvider.GetUtcNow());
+            if (_devices.TryAdd(deviceId, record))
+            {
+                SavePersistedDevices();
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     public bool UpdateHeartbeat(
         string deviceId,
