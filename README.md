@@ -34,20 +34,20 @@ SwiftDesk provides secure, owner-consented remote support across Windows, Linux 
 - [Repository Structure](#repository-structure)
 - [Prerequisites](#prerequisites)
 - [Build and Test](#build-and-test)
-- [Quickstart: Running SwiftDesk Locally](#quickstart-running-swiftdesk-locally)
-  - [1. Start Signaling Service](#1-start-the-signaling-server)
-  - [2. Enroll and Start Host Agent](#2-enroll-and-start-the-agent-host-machine)
-  - [3. Start Desktop Client](#3-start-the-desktop-client-viewer-machine)
-  - [4. Connect and Control](#4-connect-and-control)
+- [Quickstart: Running SwiftDesk](#quickstart-running-swiftdesk)
+  - [Option A: Standalone Portable Executable (.exe)](#option-a-standalone-portable-executable-exe)
+  - [Option B: Running from Source (.NET CLI)](#option-b-running-from-source-net-cli)
+  - [Connecting Two Computers Across the Internet](#connecting-two-computers-across-the-internet)
 - [Enterprise Security & Architecture](#enterprise-security--architecture)
   - [Enterprise Production Identity (OIDC & MFA)](#enterprise-production-identity-oidc--mfa)
   - [Privileged Remote Reboot Service](#privileged-remote-reboot-service)
   - [Wayland Portal Integration (PipeWire & xdg-desktop-portal)](#wayland-portal-integration-pipewire--xdg-desktop-portal)
   - [Clustered Relay Fallback (Redis Pub/Sub Backplane)](#clustered-relay-fallback-redis-pubsub-backplane)
 - [Cross-Platform Packaging & Installers](#cross-platform-packaging--installers)
-  - [Windows MSI](#1-windows-msi-wix-toolset-v4)
-  - [Linux Debian & RPM Packages](#2-linux-packages-debian--rpm)
-  - [macOS Installer Package](#3-macos-installer-pkg--launchd)
+  - [Windows Standalone Single-File (.exe)](#1-windows-standalone-single-file-exe)
+  - [Windows MSI (WiX Toolset v4)](#2-windows-msi-wix-toolset-v4)
+  - [Linux Debian & RPM Packages](#3-linux-packages-debian--rpm)
+  - [macOS Installer Package](#4-macos-installer-pkg--launchd)
 - [Configuration Reference](#configuration-reference)
 - [Production Deployment with Docker](#production-deployment-with-docker)
 - [Free Cloud Deployment Options](#free-cloud-deployment-options)
@@ -128,16 +128,20 @@ sequenceDiagram
 
 ## Release Notes: v1.2.7
 
+- **Self-Contained Portable Executables (`.exe`)**:
+  - Standalone single-file distributions for zero-install portability (`packaging/windows/standalone/SwiftDesk.exe` and `RemoteDesk.Agent.exe`).
+  - Bundles the complete Avalonia UI, .NET 10 runtime, and native platform components into a single executable requiring no pre-installed dependencies.
+  - Windows WiX v4 installer manifest updated producing `SwiftDesk-1.2.7-Setup.msi`.
+- **Resilient Device Auto-Adoption**:
+  - Implemented automatic enrollment and auto-adoption in the PostgreSQL persistence layer (`PostgresDeviceStore.AuthenticateAsync`).
+  - Devices presenting valid 12-digit addresses and device secrets are automatically registered into PostgreSQL with zero-friction, preventing `401 Unauthorized` heartbeat rejection when deploying fresh database instances or connecting across migrating environments.
 - **Resilient Host Agent Loop**:
   - Encapsulated session polling and request approvals in protective exception handling to prevent Agent termination from transient HTTP/Signaling glitches or temporary network drops.
   - Automatic reconnection, device state recovery, and continuous background listening without requiring manual host restarts.
-- **Self-Contained Distribution & Packaging**:
-  - Full self-contained .NET 10 compilation for all target binaries (`RemoteDesk.Client`, `RemoteDesk.Agent`, `RemoteDesk.PrivilegedHelper`), eliminating any runtime dependency errors on machines without .NET installed.
-  - Updated WiX v4 installer manifest and PowerShell builder producing `SwiftDesk-1.2.7-Setup.msi`.
 - **Environment & Configuration Precision**:
-  - Filtered stale/ephemeral tunnel URLs across Agent and Client options with seamless fallback to local and custom signaling endpoints.
+  - Synchronized toolbar configuration with underlying agent processes: when configuring Signaling Server and Operator credentials in the GUI, both the Controller client and background Host Agent operate synchronously.
   - Added support for automated testing approval mode via `REMOTEDESK_AUTO_APPROVE`.
-- Ships the updated Windows x64 MSI installer as `SwiftDesk-1.2.7-Setup.msi`.
+- Ships the updated Windows x64 MSI installer as `SwiftDesk-1.2.7-Setup.msi` and portable standalone binaries under `packaging/windows/standalone/`.
 
 ---
 
@@ -238,54 +242,51 @@ dotnet test RemoteDesk.slnx --no-build --no-restore
 
 ---
 
-## Quickstart: Running SwiftDesk Locally
+## Quickstart: Running SwiftDesk
 
-### 1. Start the Signaling Server
+### Option A: Standalone Portable Executable (.exe)
 
+For instant zero-installation use on Windows:
+1. Download or copy `SwiftDesk.exe` from `packaging/windows/standalone/` (or install via `SwiftDesk-1.2.7-Setup.msi`).
+2. Double-click `SwiftDesk.exe` to launch the client GUI.
+3. The application automatically starts the local agent in the background, displays your 12-digit SwiftDesk address, and is immediately ready to accept connections or connect to remote devices.
+
+---
+
+### Option B: Running from Source (.NET CLI)
+
+#### 1. Start the Signaling Server
 ```powershell
 dotnet run --project src/RemoteDesk.Signaling
 ```
+The server initializes on `http://localhost:5080` (or your configured port/domain).
 
-The server initializes on `http://localhost:5080` with in-memory persistence by default.
-
-### 2. Enroll and Start the Agent (Host Machine)
-
-Open a terminal on the host machine and run:
-
-```powershell
-dotnet run --project src/RemoteDesk.Agent -- `
-  --server http://localhost:5080 `
-  --bootstrap-token local-bootstrap-change-me `
-  --download-directory C:\Temp\SwiftDeskDownloads
-```
-
-On first launch, the agent enrolls the computer, receives a unique persistent device ID, and stores the credentials in the local user application data directory:
-```text
-Enrollment succeeded. This device now has a persistent SwiftDesk ID.
-SwiftDesk ID: dev_01j7...
-RemoteDesk agent dev_01j7... on Windows
-Available permissions: ViewScreen, ControlInput, TransferFiles, RebootDevice
-```
-
-### 3. Start the Desktop Client (Viewer Machine)
-
-In another terminal, launch the Avalonia UI:
-
+#### 2. Start the Desktop Client (Viewer / Host)
 ```powershell
 dotnet run --project src/RemoteDesk.Client
 ```
+The desktop client starts, initializes its local host agent, displays your 12-digit address (e.g., `686 171 244 053`), and displays **Ready**.
 
-### 4. Connect and Control
+---
 
-1. Copy the ID from the host computer's **Your SwiftDesk ID** card and paste it into the client's **Remote device ID** field.
-2. Toggle your requested permissions:
-   - **View screen**: Streams the remote desktop.
-   - **Control input**: Enables mouse movements, clicks, scroll, and keyboard events.
-   - **Transfer files**: Enables secure file push to the host's configured destination directory.
-   - **Reboot device**: Authorizes privileged remote reboot through the helper daemon.
-3. Click **Request connection**.
-4. In the Agent console, confirm the attended access prompt (`y`).
-5. The live remote desktop stream will appear in the client viewport with full interactive control!
+### Connecting Two Computers Across the Internet
+
+To connect two computers across the internet (e.g., Host `624577650753` and Viewer `686 171 244 053`):
+
+1. **Both computers must share the same Signaling Server & Operator Key**:
+   - In the top settings toolbar of SwiftDesk on **both machines**, enter your public signaling server endpoint:
+     - **Signaling server**: `https://your-signaling-domain.com` (or Cloudflare tunnel URL)
+     - **Operator key**: `<your-configured-operator-key>`
+     - **Operator name**: `Your Name / Organization`
+2. **Verify Host Status**:
+   - The remote host machine will show a green **● Ready** badge beside its 12-digit address.
+3. **Initiate Connection**:
+   - On the controller machine, enter the target's 12-digit address into **Connect to Remote Device** (e.g. `624577650753`).
+   - Select desired permissions (**View screen**, **Control input**, **File transfer**, **Remote reboot**).
+   - Click **Connect →**.
+4. **Attended Consent**:
+   - The remote machine receives an instant attended consent prompt.
+   - Click **Allow / Accept**. The interactive remote desktop session begins immediately!
 
 ---
 
@@ -322,13 +323,35 @@ dotnet run --project src/RemoteDesk.Client
 
 ## Cross-Platform Packaging & Installers
 
-SwiftDesk includes production packaging workflows for Windows, Linux, and macOS, installing client binaries and registering the privileged helper daemon.
+SwiftDesk includes production packaging workflows for Windows, Linux, and macOS, providing both portable single-file executables and enterprise system installers.
 
-### 1. Windows MSI (WiX Toolset v4)
+### 1. Windows Standalone Single-File (.exe)
+
+For quick deployments without requiring administrative privileges or .NET runtime installation, SwiftDesk can be published as a self-contained portable single-file binary:
+
+```powershell
+# Build standalone portable GUI executable
+dotnet publish src/RemoteDesk.Client/RemoteDesk.Client.csproj `
+  -c Release -r win-x64 --self-contained true `
+  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
+  -o packaging/windows/standalone
+
+# Build standalone portable Host Agent executable
+dotnet publish src/RemoteDesk.Agent/RemoteDesk.Agent.csproj `
+  -c Release -r win-x64 --self-contained true `
+  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
+  -o packaging/windows/standalone
+```
+
+The output executables:
+- **`packaging/windows/standalone/SwiftDesk.exe`**: Complete desktop client GUI with auto-spawned host agent.
+- **`packaging/windows/standalone/RemoteDesk.Agent.exe`**: Headless host agent for server environments or background automation.
+
+### 2. Windows MSI (WiX Toolset v4)
 
 The Windows installer compiles via WiX v4 into an enterprise MSI package that installs application binaries, registers the `SwiftDeskPrivilegedHelper` Windows Service, and sets up restricted ACLs on `%ProgramData%\SwiftDesk`.
 
-The current Windows release is **v1.2.7**. Always pass the stable signaling URL explicitly when producing an installer for distribution (for example, your Northflank `code.run` or Koyeb `koyeb.app` URL).
+The current Windows release is **v1.2.7**. Always pass the stable signaling URL explicitly when producing an installer for distribution (for example, your public domain or cloud URL).
 
 ```powershell
 # Build the Windows MSI installer (pre-configured with your signaling server & keys)
@@ -347,7 +370,7 @@ Get-Service SwiftDeskPrivilegedHelper
 msiexec /x .\packaging\windows\SwiftDesk-1.2.7-Setup.msi /qn
 ```
 
-### 2. Linux Packages (Debian & RPM)
+### 3. Linux Packages (Debian & RPM)
 
 The Linux packaging script publishes the client, agent, and privileged helper, generating standard `.deb` packages and hardened systemd unit definitions (`ProtectSystem=strict`, `NoNewPrivileges=yes`, `CapabilityBoundingSet=CAP_SYS_BOOT`).
 
@@ -367,7 +390,7 @@ sudo systemctl status swiftdesk-privileged-reboot.service
 sudo apt-get remove swiftdesk
 ```
 
-### 3. macOS Installer (.pkg & launchd)
+### 4. macOS Installer (.pkg & launchd)
 
 The macOS packaging script publishes native binaries (universal / Apple Silicon), installs the application bundle to `/Applications/SwiftDesk.app`, and configures a system `launchd` daemon in `/Library/LaunchDaemons/`.
 
