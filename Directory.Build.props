@@ -8,9 +8,9 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Deterministic>true</Deterministic>
     <Version>1.2.7</Version>
-    <Authors>Sahil Yadav</Authors>
-    <Company>Sahil Yadav</Company>
-    <Copyright>Copyright © 2026 Sahil Yadav. All rights reserved.</Copyright>
+    <Authors>Sahil Yadav (SK ONE TECH)</Authors>
+    <Company>SK ONE TECH (https://skonetechsupport.com/)</Company>
+    <Copyright>Copyright © 2026 Sahil Yadav (SK ONE TECH). All rights reserved.</Copyright>
   </PropertyGroup>
 </Project>
 

@@ -7,6 +7,9 @@
 **Enterprise-Grade, Cross-Platform Remote Support & Desktop Control**
 
 [![Release](https://img.shields.io/badge/Release-v1.2.7-blue?logo=github)](https://github.com/sahilyadav-01/SwiftDesk/releases)
+[![Author](https://img.shields.io/badge/Author-Sahil%20Yadav-blue?logo=github)](https://github.com/sahilyadav-01)
+[![Powered By](https://img.shields.io/badge/Powered%20By-SK%20ONE%20TECH-orange?logo=google-chrome&logoColor=white)](https://skonetechsupport.com/)
+[![Website](https://img.shields.io/badge/Official%20Website-skonetechsupport.com-0052CC)](https://skonetechsupport.com/)
 [![.NET 10 LTS](https://img.shields.io/badge/.NET-10.0%20LTS-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
 [![C# 14](https://img.shields.io/badge/C%23-14.0-239120?logo=csharp&logoColor=white)](https://learn.microsoft.com/en-us/dotnet/csharp/)
 [![Avalonia UI](https://img.shields.io/badge/UI-Avalonia%2012.1.4-8C52FF?logo=avalonia&logoColor=white)](https://avaloniaui.net/)
@@ -16,9 +19,9 @@
 [![Security Policy](https://img.shields.io/badge/Security-Policy%20%7C%20Audited-critical)](SECURITY.md)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-SwiftDesk provides secure, owner-consented remote support across Windows, Linux (Wayland & X11), and macOS. Engineered for low latency and enterprise compliance, it features real-time screen sharing, remote mouse and keyboard control, chunked integrity-checked file transfers, attended access consent, cryptographic session tickets, clustered relay fallback, and an isolated privileged remote reboot service.
+SwiftDesk provides secure, owner-consented remote support across Windows, Linux (Wayland & X11), and macOS. Developed by **Sahil Yadav** and powered by **[SK ONE TECH](https://skonetechsupport.com/)**, it is engineered for low latency, enterprise compliance, real-time screen sharing, remote mouse and keyboard control, chunked integrity-checked file transfers, attended access consent, cryptographic session tickets, clustered relay fallback, and an isolated privileged remote reboot service.
 
-[Architecture](#architecture-overview) • [Capabilities](#current-status--capabilities) • [Repository Structure](#repository-structure) • [Quickstart](#quickstart-running-swiftdesk-locally) • [Packaging](#cross-platform-packaging--installers) • [Enterprise Security](#enterprise-security--architecture) • [Configuration](#configuration-reference) • [License](#license--copyright)
+[Architecture](#architecture-overview) • [Capabilities](#current-status--capabilities) • [Repository Structure](#repository-structure) • [Quickstart](#quickstart-running-swiftdesk) • [Packaging](#cross-platform-packaging--installers) • [Enterprise Security](#enterprise-security--architecture) • [Configuration](#configuration-reference) • [Support](#enterprise--technical-support) • [License](#license--copyright)
 
 </div>
 
@@ -51,6 +54,7 @@ SwiftDesk provides secure, owner-consented remote support across Windows, Linux 
 - [Configuration Reference](#configuration-reference)
 - [Production Deployment with Docker](#production-deployment-with-docker)
 - [Free Cloud Deployment Options](#free-cloud-deployment-options)
+- [Enterprise & Technical Support](#enterprise--technical-support)
 - [Security Invariants & Policy](#security-invariants--policy)
 - [License & Copyright](#license--copyright)
 
@@ -581,6 +585,22 @@ The Oracle stack exposes only Caddy on ports 80/443. Caddy obtains and renews a 
 
 ---
 
+## Enterprise & Technical Support
+
+SwiftDesk is supported and backed by **[SK ONE TECH](https://skonetechsupport.com/)**, providing professional IT services, 24/7 technical support, infrastructure management, and enterprise remote support solutions.
+
+- **Official Website**: [https://skonetechsupport.com/](https://skonetechsupport.com/)
+- **Lead Developer & Maintainer**: **Sahil Yadav** ([GitHub @sahilyadav-01](https://github.com/sahilyadav-01))
+- **Services Offered**:
+  - 24/7 Managed IT Support & Helpdesk
+  - Custom RemoteDesk / SwiftDesk Enterprise Deployment & SLA Support
+  - Cloud Signaling & Relay Infrastructure Setup (Private Cloud / On-Premise)
+  - Security Auditing, Compliance & Zero-Trust Access Configuration
+
+For business inquiries, enterprise support agreements, or custom features, reach out via **[skonetechsupport.com](https://skonetechsupport.com/)**.
+
+---
+
 ## Security Invariants & Policy
 
 SwiftDesk follows strict zero-trust and consent-first engineering invariants. For vulnerability reporting procedures and disclosure timelines, see our [Security Policy](SECURITY.md). For complete cryptographic specifications and threat models, review [docs/security.md](docs/security.md).
@@ -598,7 +618,8 @@ SwiftDesk follows strict zero-trust and consent-first engineering invariants. Fo
 ## License & Copyright
 
 ```text
-Copyright (c) 2026 Sahil Yadav. All rights reserved.
+Copyright (c) 2026 Sahil Yadav (SK ONE TECH). All rights reserved.
+Website: https://skonetechsupport.com/
 ```
 
 Licensed under the [Apache License, Version 2.0](LICENSE). You may obtain a copy of the License at:
@@ -613,6 +634,8 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 <div align="center">
   <b>SwiftDesk</b> • Built with .NET 10 LTS and Avalonia UI<br />
-  Copyright &copy; 2026 <b>Sahil Yadav</b>. All rights reserved.
+  Developed & Maintained by <b>Sahil Yadav</b> | Powered by <a href="https://skonetechsupport.com/"><b>SK ONE TECH</b></a><br />
+  Official Support: <a href="https://skonetechsupport.com/">skonetechsupport.com</a><br />
+  Copyright &copy; 2026 <b>Sahil Yadav (SK ONE TECH)</b>. All rights reserved.
 </div>
 
