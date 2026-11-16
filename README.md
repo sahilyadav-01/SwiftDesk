@@ -50,7 +50,7 @@ SwiftDesk provides secure, owner-consented remote support across Windows, Linux 
   - [macOS Installer Package](#3-macos-installer-pkg--launchd)
 - [Configuration Reference](#configuration-reference)
 - [Production Deployment with Docker](#production-deployment-with-docker)
-- [Cloud Deployment (Railway & Cloudflare Tunnel)](#cloud-deployment-railway--cloudflare-tunnel)
+- [Free Cloud Deployment Options](#free-cloud-deployment-options)
 - [Security Invariants & Policy](#security-invariants--policy)
 - [License & Copyright](#license--copyright)
 
@@ -328,7 +328,7 @@ SwiftDesk includes production packaging workflows for Windows, Linux, and macOS,
 
 The Windows installer compiles via WiX v4 into an enterprise MSI package that installs application binaries, registers the `SwiftDeskPrivilegedHelper` Windows Service, and sets up restricted ACLs on `%ProgramData%\SwiftDesk`.
 
-The current Windows release is **v1.2.7**. Always pass the signaling URL explicitly when producing an installer for distribution; Cloudflare Quick Tunnel hostnames are temporary and should not be treated as permanent production endpoints.
+The current Windows release is **v1.2.7**. Always pass the stable signaling URL explicitly when producing an installer for distribution (for example, your Northflank `code.run` or Koyeb `koyeb.app` URL).
 
 ```powershell
 # Build the Windows MSI installer (pre-configured with your signaling server & keys)
@@ -444,44 +444,117 @@ docker compose logs -f signaling
 
 ---
 
-## Cloud Deployment (Railway & Cloudflare Tunnel)
+## Free Cloud Deployment Options
 
-### 1. One-Click Deploy on Railway
+The following non-Cloudflare hosts can run SwiftDesk's root [`Dockerfile`](Dockerfile) with public HTTPS and WebSocket support:
 
-SwiftDesk includes a native [`railway.toml`](railway.toml) configuration for instant containerized cloud deployment:
+| Host | Free offering | Sleep behavior | Best use |
+| --- | --- | --- | --- |
+| [Northflank](https://northflank.com/) | Sandbox with up to two services; no card required | Always on | Recommended for SwiftDesk testing |
+| [Koyeb](https://www.koyeb.com/) | One 512 MB free web service | Sleeps after one idle hour | Simple hobby deployment |
+| [Oracle Cloud](https://www.oracle.com/cloud/free/) | Always Free compute VM | No normal app sleep; idle VMs can be reclaimed | Persistent, self-managed server |
+| [Google Cloud Run](https://cloud.google.com/run) | Monthly request/CPU/memory allowance | Scales to zero | Short tests; active WebSockets consume allowance |
+
+Northflank is the default recommendation because its free Sandbox is always-on and supports public WebSockets. Koyeb is the easiest fallback. Oracle requires Linux server administration and card verification. Cloud Run limits each WebSocket request to 60 minutes and can charge after its free compute allowance, so it is not the preferred SwiftDesk host.
+
+First, generate three different secrets and save their values somewhere secure:
+
+```powershell
+function New-SwiftDeskSecret {
+    $bytes = New-Object byte[] 32
+    $generator = [Security.Cryptography.RandomNumberGenerator]::Create()
+    try { $generator.GetBytes($bytes) } finally { $generator.Dispose() }
+    [Convert]::ToBase64String($bytes)
+}
+
+$bootstrapToken = New-SwiftDeskSecret
+$operatorKey = New-SwiftDeskSecret
+$signingKey = New-SwiftDeskSecret
+
+"Bootstrap token: $bootstrapToken"
+"Operator key:    $operatorKey"
+"Signing key:     $signingKey"
+```
+
+### Option A: Northflank Sandbox (recommended)
+
+1. Push or fork this repository to GitHub.
+2. Create a free **Sandbox** account at [Northflank](https://app.northflank.com/signup) and create a project.
+3. Select **Create new service > Combined service** and connect the GitHub repository.
+4. Choose the repository-root `Dockerfile` as the build method.
+5. Select the smallest free Sandbox compute plan with one instance.
+6. Add a public HTTP port `8080`. Northflank supplies the TLS-enabled `code.run` domain and supports WebSocket upgrades on this port.
+7. Add these runtime variables as secrets:
+   - `ASPNETCORE_ENVIRONMENT=Production`
+   - `REMOTEDESK_BOOTSTRAP_TOKEN=<bootstrap token>`
+   - `REMOTEDESK_OPERATOR_KEY=<operator key>`
+   - `REMOTEDESK_SIGNING_KEY=<signing key>`
+8. Deploy, then copy the generated `https://<service>.code.run` URL.
+
+Verify the service:
+
+```powershell
+Invoke-RestMethod https://<service>.code.run/health
+```
+
+### Option B: Koyeb Free
 
 1. Fork or push this repository to GitHub.
-2. In [Railway.app](https://railway.app), create a new project and select **Deploy from GitHub repo**.
-3. Railway automatically detects the root `Dockerfile` and `railway.toml`.
-4. Under the service **Variables** tab, set:
-   - `REMOTEDESK_BOOTSTRAP_TOKEN`: Secure random secret string (e.g., `openssl rand -base64 32`)
-   - `REMOTEDESK_OPERATOR_KEY`: Secure random secret string for client operators
-   - `REMOTEDESK_SIGNING_KEY`: 32+ character HMAC key for signing tickets
-5. Under **Settings -> Networking**, click **Generate Domain** to get your public HTTPS URL (e.g., `https://swiftdesk-production.up.railway.app`).
+2. In the [Koyeb Control Panel](https://app.koyeb.com/), select **Create Web Service > GitHub** and connect the repository.
+3. Select the **Dockerfile** builder and use the repository-root `Dockerfile`.
+4. Select a **Web Service**, the **Free** instance, and the **Frankfurt** region.
+5. Expose port `8080` using HTTP with the `/` route. Configure the health check path as `/health`.
+6. Add these environment variables, using the values generated above and marking the three credentials as secrets:
+   - `ASPNETCORE_ENVIRONMENT=Production`
+   - `REMOTEDESK_BOOTSTRAP_TOKEN=<bootstrap token>`
+   - `REMOTEDESK_OPERATOR_KEY=<operator key>`
+   - `REMOTEDESK_SIGNING_KEY=<signing key>`
+7. Deploy and copy the assigned public URL, such as `https://swiftdesk-<organization>.koyeb.app`.
 
-### 2. Testing with Cloudflare Quick Tunnel
-
-To test remote connections across different networks without opening firewall/router ports:
-
-```powershell
-# 1. Start local signaling server
-dotnet run --project src/RemoteDesk.Signaling --urls http://127.0.0.1:5080
-
-# 2. Expose via Cloudflare Quick Tunnel
-cloudflared tunnel --url http://localhost:5080
-```
-
-Verify both the local origin and generated public URL before connecting an agent or controller:
+Verify the deployment before connecting an agent or controller:
 
 ```powershell
-Invoke-RestMethod http://127.0.0.1:5080/health
-Invoke-RestMethod https://<generated-hostname>.trycloudflare.com/health
+Invoke-RestMethod https://<your-service>.koyeb.app/health
 ```
 
-Pass the generated `https://*.trycloudflare.com` URL as `--server` to the Host Agent and Client. For a temporary MSI test build, pass it as the builder's `-ServerUrl` value together with `-AllowEphemeralTunnel`; distributable builds require a stable signaling URL.
+For either host, use its HTTPS URL as `--server` for both the Host Agent and Client, and as the MSI builder's `-ServerUrl` value. Use the bootstrap token with the Host Agent and the operator key with the Client.
 
-> [!WARNING]
-> Quick Tunnel URLs expire when the tunnel process stops and may not resolve afterward. Generate a fresh URL for each temporary test session. Use a named Cloudflare Tunnel, Railway domain, or another stable HTTPS endpoint for deployed installers.
+### Option C: Oracle Cloud Always Free VM
+
+After creating an Ubuntu Always Free VM with a public IPv4 address, add stateful TCP ingress rules for ports `80` and `443` to its network security group or subnet security list. Keep SSH port `22` restricted to your own public IP when possible; do not expose ports `5080`, `5432`, or `6379`.
+
+Connect using the private key downloaded during instance creation:
+
+```powershell
+ssh -i "C:\path\to\ssh-key.key" ubuntu@<PUBLIC-IP>
+```
+
+On the VM, install Docker and clone SwiftDesk:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y docker.io docker-compose-v2 git
+sudo systemctl enable --now docker
+sudo usermod -aG docker "$USER"
+git clone https://github.com/sahilyadav-01/SwiftDesk.git
+cd SwiftDesk
+cp .env.oracle.example .env.oracle
+```
+
+Sign out and reconnect so the Docker group membership takes effect. Edit `.env.oracle`, replace every placeholder, and convert the public IP dots to dashes in `SWIFTDESK_DOMAIN`. For example, public IP `203.0.113.10` becomes `swiftdesk.203-0-113-10.sslip.io`. Generate a separate random value for each credential.
+
+Start the persistent stack and verify HTTPS:
+
+```bash
+docker compose --env-file .env.oracle -f compose.oracle.yaml up -d --build
+docker compose --env-file .env.oracle -f compose.oracle.yaml ps
+curl https://"$(grep '^SWIFTDESK_DOMAIN=' .env.oracle | cut -d= -f2)"/health
+```
+
+The Oracle stack exposes only Caddy on ports 80/443. Caddy obtains and renews a public TLS certificate, forwards HTTP and WebSocket traffic to SwiftDesk, and redirects HTTP to HTTPS. PostgreSQL data and Caddy certificates use named Docker volumes; PostgreSQL and Redis are not published on the VM's public network.
+
+> [!IMPORTANT]
+> Free hosting has no production availability guarantee. Koyeb scales to zero after one hour without Internet traffic; Northflank Sandbox resource limits can change; Oracle can reclaim an Always Free VM it considers idle. The Northflank and Koyeb configurations use in-memory SwiftDesk state, which resets whenever an instance restarts. The Oracle Compose configuration includes persistent PostgreSQL storage but still requires backups and operating-system maintenance.
 
 ---
 

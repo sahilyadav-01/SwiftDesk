@@ -5,9 +5,11 @@ obj/
 .vscode/
 artifacts/
 work/.dotnet/
+work/nuget-packages/
 *.user
 *.suo
 *.part
 packaging/windows/publish/
 *.wixpdb
 *.msi
+.env.oracle
