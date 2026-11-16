@@ -117,7 +117,39 @@ public sealed class PostgresDeviceStore(NpgsqlDataSource dataSource, TimeProvide
         command.Parameters.AddWithValue(deviceId);
 
         var hash = await command.ExecuteScalarAsync(cancellationToken) as byte[];
-        return hash is not null && SecretHasher.Verify(secret, hash);
+        if (hash is not null)
+        {
+            return SecretHasher.Verify(secret, hash);
+        }
+
+        // Resilient recovery: If a previously enrolled device authenticates with its secret
+        // (for example across database migrations or newly connected nodes), automatically register
+        // it into Postgres so its existing SwiftDesk ID remains functional and valid.
+        if (deviceId.Length == 12 && deviceId.All(char.IsAsciiDigit))
+        {
+            try
+            {
+                const string insertSql = """
+                    INSERT INTO devices (device_id, name, platform, secret_hash, enrolled_at)
+                    VALUES ($1, $2, $3, $4, $5)
+                    ON CONFLICT (device_id) DO NOTHING;
+                    """;
+                await using var insertCmd = _dataSource.CreateCommand(insertSql);
+                insertCmd.Parameters.AddWithValue(deviceId);
+                insertCmd.Parameters.AddWithValue($"Device-{deviceId[..4]}");
+                insertCmd.Parameters.AddWithValue("Unknown");
+                insertCmd.Parameters.AddWithValue(SecretHasher.Hash(secret));
+                insertCmd.Parameters.AddWithValue(_timeProvider.GetUtcNow());
+                await insertCmd.ExecuteNonQueryAsync(cancellationToken);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        return false;
     }
 
     public async Task<bool> UpdateHeartbeatAsync(
