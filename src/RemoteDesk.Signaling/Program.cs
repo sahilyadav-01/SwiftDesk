@@ -168,6 +168,7 @@ app.MapPost("/api/devices/{deviceId}/heartbeat", async (
 {
     if (!await devices.AuthenticateAsync(deviceId, context.Request.Headers["X-Device-Secret"], context.RequestAborted))
     {
+        Console.WriteLine($"[Heartbeat REJECTED] Device {deviceId} unauthorized (secret mismatch or missing).");
         return Results.Unauthorized();
     }
 
@@ -177,6 +178,7 @@ app.MapPost("/api/devices/{deviceId}/heartbeat", async (
     }
 
     await devices.UpdateHeartbeatAsync(deviceId, request.AgentVersion, request.Capabilities, context.RequestAborted);
+    Console.WriteLine($"[Heartbeat OK] Device {deviceId} ({request.Capabilities.Platform}, v{request.AgentVersion}) active.");
     return Results.NoContent();
 });
 
@@ -192,6 +194,10 @@ app.MapGet("/api/devices/{deviceId}/requests", async (
     }
 
     var pending = await sessions.GetPendingForDeviceAsync(deviceId, context.RequestAborted);
+    if (pending.Count > 0)
+    {
+        Console.WriteLine($"[Device Poll] Device {deviceId} received {pending.Count} pending session request(s).");
+    }
     return Results.Ok(pending);
 });
 
@@ -213,6 +219,7 @@ app.MapPost("/api/devices/{deviceId}/requests/{sessionId}", async (
     {
         var decision = await sessions.DecideAsync(deviceId, sessionId, request, context.RequestAborted);
         var eventType = request.Approved ? "SessionApproved" : "SessionDeclined";
+        Console.WriteLine($"[Session Decision] Device {deviceId} for session {sessionId}: Approved={request.Approved}, Granted={request.GrantedPermissions}");
         await audit.RecordEventAsync(eventType, deviceId, sessionId, null, $"Permissions: {request.GrantedPermissions}", context.RequestAborted);
         return Results.Ok(decision);
     }
@@ -253,6 +260,7 @@ app.MapPost("/api/sessions", async (
         var verifiedOperator = !string.IsNullOrWhiteSpace(auth.Identity.DisplayName) ? auth.Identity.DisplayName : auth.Identity.Subject;
         var verifiedRequest = request with { OperatorName = verifiedOperator };
         var session = await sessions.CreateAsync(verifiedRequest, context.RequestAborted);
+        Console.WriteLine($"[Session Created] Operator '{verifiedOperator}' requested session with device {request.DeviceId} (Session: {session.SessionId})");
         await audit.RecordEventAsync(
             "SessionCreated",
             request.DeviceId,
@@ -380,6 +388,7 @@ app.Map("/ws/sessions/{sessionId}", async (
     {
         await sessions.SetStateAsync(sessionId, SessionState.Active, context.RequestAborted);
         await audit.RecordEventAsync("SessionConnected", validation.Claims.DeviceId, sessionId, null, $"Role: {validation.Claims.Role}");
+        Console.WriteLine($"[Relay Connected] Role: {validation.Claims.Role} joined session {sessionId} for device {validation.Claims.DeviceId}");
         await relay.JoinAsync(sessionId, validation.Claims.Role, socket, context.RequestAborted);
     }
     catch (InvalidOperationException)
@@ -390,6 +399,7 @@ app.Map("/ws/sessions/{sessionId}", async (
     {
         await sessions.SetStateAsync(sessionId, SessionState.Disconnected);
         await audit.RecordEventAsync("SessionDisconnected", validation.Claims.DeviceId, sessionId, null, $"Role: {validation.Claims.Role}");
+        Console.WriteLine($"[Relay Disconnected] Role: {validation.Claims.Role} left session {sessionId}");
     }
 });
 

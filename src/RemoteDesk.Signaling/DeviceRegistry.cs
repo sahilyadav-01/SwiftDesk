@@ -43,6 +43,7 @@ internal sealed record PersistedDeviceItem(
 
 public sealed class DeviceRegistry : IDeviceStore
 {
+    private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
     private readonly ConcurrentDictionary<string, DeviceRecord> _devices = new(StringComparer.Ordinal);
     private readonly TimeProvider _timeProvider;
     private readonly string? _storagePath;
@@ -128,7 +129,7 @@ public sealed class DeviceRegistry : IDeviceStore
                 Convert.ToBase64String(d.SecretHash),
                 d.EnrolledAt)).ToList();
 
-            var json = JsonSerializer.Serialize(items, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(items, SerializerOptions);
             File.WriteAllText(_storagePath, json);
         }
         catch
