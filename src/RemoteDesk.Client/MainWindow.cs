@@ -1160,6 +1160,7 @@ internal sealed class MainWindow : Window, IAsyncDisposable
                 _invitationsTabPanel,
                 advancedSettings,
                 filePanel,
+                legalFooter,
             },
         };
 

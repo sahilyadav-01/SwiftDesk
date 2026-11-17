@@ -17,11 +17,13 @@
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-informational)](https://github.com/sahilyadav-01/SwiftDesk)
 [![Tests](https://img.shields.io/badge/Tests-52%20Passed-brightgreen)](https://github.com/sahilyadav-01/SwiftDesk)
 [![Security Policy](https://img.shields.io/badge/Security-Policy%20%7C%20Audited-critical)](SECURITY.md)
+[![Privacy Policy](https://img.shields.io/badge/Privacy-Policy-green.svg)](PRIVACY.md)
+[![Terms of Service](https://img.shields.io/badge/Terms-of%20Service-blue.svg)](TERMS.md)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 SwiftDesk provides secure, owner-consented remote support across Windows, Linux (Wayland & X11), and macOS. Developed by **Sahil Yadav** and powered by **[SK ONE TECH](https://skonetechsupport.com/)**, it is engineered for low latency, enterprise compliance, real-time screen sharing, remote mouse and keyboard control, chunked integrity-checked file transfers, attended access consent, cryptographic session tickets, clustered relay fallback, and an isolated privileged remote reboot service.
 
-[Architecture](#architecture-overview) • [Capabilities](#current-status--capabilities) • [Repository Structure](#repository-structure) • [Quickstart](#quickstart-running-swiftdesk) • [Packaging](#cross-platform-packaging--installers) • [Enterprise Security](#enterprise-security--architecture) • [Configuration](#configuration-reference) • [Support](#enterprise--technical-support) • [License](#license--copyright)
+[Architecture](#architecture-overview) • [Capabilities](#current-status--capabilities) • [Repository Structure](#repository-structure) • [Quickstart](#quickstart-running-swiftdesk) • [Packaging](#cross-platform-packaging--installers) • [Enterprise Security](#enterprise-security--architecture) • [Configuration](#configuration-reference) • [Support](#enterprise--technical-support) • [Privacy & Terms](#privacy-policy--terms-of-service) • [License](#license--copyright)
 
 </div>
 
@@ -55,6 +57,7 @@ SwiftDesk provides secure, owner-consented remote support across Windows, Linux 
 - [Production Deployment with Docker](#production-deployment-with-docker)
 - [Free Cloud Deployment Options](#free-cloud-deployment-options)
 - [Enterprise & Technical Support](#enterprise--technical-support)
+- [Privacy Policy & Terms of Service](#privacy-policy--terms-of-service)
 - [Security Invariants & Policy](#security-invariants--policy)
 - [License & Copyright](#license--copyright)
 
@@ -598,6 +601,21 @@ SwiftDesk is supported and backed by **[SK ONE TECH](https://skonetechsupport.co
   - Security Auditing, Compliance & Zero-Trust Access Configuration
 
 For business inquiries, enterprise support agreements, or custom features, reach out via **[skonetechsupport.com](https://skonetechsupport.com/)**.
+
+---
+
+## Privacy Policy & Terms of Service
+
+SwiftDesk is committed to ethical, transparent, and consent-first remote desktop software. Full legal documents are published in this repository:
+
+- **[Privacy Policy (PRIVACY.md)](PRIVACY.md)**: Details our zero-surveillance architecture, what ephemeral data is processed during connections, our commitment to never store screen frames or keystrokes, and complete data ownership rights.
+- **[Terms of Service (TERMS.md)](TERMS.md)**: Governs acceptable usage, open-source licensing under Apache 2.0, explicit prohibitions against covert access or malware deployment, and enterprise service boundaries.
+
+### Key Highlights
+- **100% Attended-Only Consent**: No session can start without the host machine owner clicking "Allow".
+- **Zero Covert Surveillance**: No silent background screen streaming, keylogging, or webcam monitoring.
+- **Direct P2P Privacy**: Media and control events flow over direct WebRTC peer-to-peer data channels whenever possible.
+- **Data Sovereignty**: When deploying private signaling servers, all database records remain entirely under your organization's administrative control.
 
 ---
 
