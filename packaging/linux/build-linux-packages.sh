@@ -30,8 +30,8 @@ cp -r "$PUBLISH_DIR"/* "$PKG_ROOT/opt/swiftdesk/"
 cp "$SCRIPT_DIR/systemd/swiftdesk-privileged-reboot.service" "$PKG_ROOT/etc/systemd/system/"
 
 if command -v dpkg-deb >/dev/null 2>&1; then
-    dpkg-deb --build "$PKG_ROOT" "$OUTPUT_DIR/swiftdesk_1.0.0_amd64.deb"
-    echo "==> Successfully created Debian package: $OUTPUT_DIR/swiftdesk_1.0.0_amd64.deb"
+    dpkg-deb --build "$PKG_ROOT" "$OUTPUT_DIR/swiftdesk_1.2.7_amd64.deb"
+    echo "==> Successfully created Debian package: $OUTPUT_DIR/swiftdesk_1.2.7_amd64.deb"
 else
     echo "dpkg-deb not found. Package tree created at $PKG_ROOT."
 fi

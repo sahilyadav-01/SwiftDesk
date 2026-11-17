@@ -30,10 +30,10 @@ if command -v pkgbuild >/dev/null 2>&1; then
         --root "$PKG_ROOT" \
         --scripts "$SCRIPT_DIR/scripts" \
         --identifier "com.swiftdesk.pkg" \
-        --version "1.0.0" \
+        --version "1.2.7" \
         --install-location "/" \
-        "$OUTPUT_DIR/SwiftDesk-1.0.0.pkg"
-    echo "==> Successfully created macOS package: $OUTPUT_DIR/SwiftDesk-1.0.0.pkg"
+        "$OUTPUT_DIR/SwiftDesk-1.2.7.pkg"
+    echo "==> Successfully created macOS package: $OUTPUT_DIR/SwiftDesk-1.2.7.pkg"
 else
     echo "pkgbuild only available on macOS. Prepared package payload at $PKG_ROOT."
 fi

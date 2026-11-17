@@ -1,10 +1,10 @@
 Name:           swiftdesk
-Version:        1.0.0
+Version:        1.2.7
 Release:        1%{?dist}
-Summary:        Cross-platform remote desktop and enterprise support tool
+Summary:        Cross-platform remote desktop and enterprise support tool by SK ONE TECH
 
-License:        MIT
-URL:            https://github.com/sahilyadav-01/SwiftDesk
+License:        Apache-2.0
+URL:            https://skonetechsupport.com/
 Source0:        swiftdesk-%{version}.tar.gz
 
 Requires:       libX11, libXtst, pipewire-libs >= 0.3.50, systemd
