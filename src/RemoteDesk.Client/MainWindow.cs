@@ -1145,6 +1145,34 @@ internal sealed class MainWindow : Window, IAsyncDisposable
             Child = headerGrid,
         };
 
+        var legalFooter = new Border
+        {
+            Margin = new Thickness(0, 18, 0, 8),
+            Padding = new Thickness(0, 14, 0, 0),
+            BorderBrush = CardBorderBrush,
+            BorderThickness = new Thickness(0, 1, 0, 0),
+            Child = new WrapPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = "SwiftDesk v1.2.7 • Developed by Sahil Yadav • Powered by SK ONE TECH   ",
+                        Foreground = SecondaryTextBrush,
+                        FontSize = 12,
+                        VerticalAlignment = VerticalAlignment.Center,
+                    },
+                    CreateHyperlinkButton("Privacy Policy", "https://github.com/sahilyadav-01/SwiftDesk/blob/main/PRIVACY.md"),
+                    new TextBlock { Text = " • ", Foreground = SecondaryTextBrush, FontSize = 12, VerticalAlignment = VerticalAlignment.Center },
+                    CreateHyperlinkButton("Terms of Service", "https://github.com/sahilyadav-01/SwiftDesk/blob/main/TERMS.md"),
+                    new TextBlock { Text = " • ", Foreground = SecondaryTextBrush, FontSize = 12, VerticalAlignment = VerticalAlignment.Center },
+                    CreateHyperlinkButton("SK ONE Tech Support", "https://skonetechsupport.com/"),
+                },
+            },
+        };
+
         var pageContent = new StackPanel
         {
             Margin = new Thickness(24),
@@ -2728,5 +2756,39 @@ internal sealed class MainWindow : Window, IAsyncDisposable
         }
 
         return null;
+    }
+
+    private static Button CreateHyperlinkButton(string label, string url)
+    {
+        var button = new Button
+        {
+            Content = label,
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Foreground = AccentBrush,
+            FontSize = 12,
+            FontWeight = FontWeight.Medium,
+            Cursor = new Cursor(StandardCursorType.Hand),
+            Padding = new Thickness(4, 2),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        button.Click += (_, _) => OpenBrowserUrl(url);
+        return button;
+    }
+
+    private static void OpenBrowserUrl(string url)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true,
+            });
+        }
+        catch
+        {
+            // Ignore system browser launch errors
+        }
     }
 }
