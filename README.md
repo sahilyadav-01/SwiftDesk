@@ -360,6 +360,8 @@ The Windows installer compiles via WiX v4 into an enterprise MSI package that in
 
 The current Windows release is **v1.2.7**. Always pass the stable signaling URL explicitly when producing an installer for distribution (for example, your public domain or cloud URL).
 
+Cloudflare Quick Tunnel URLs expire when their process stops. They are rejected by the MSI builder unless `-AllowEphemeralTunnel` is supplied for a temporary test build.
+
 ```powershell
 # Build the Windows MSI installer (pre-configured with your signaling server & keys)
 .\packaging\windows\build-msi.ps1 -Configuration Release `
