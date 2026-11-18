@@ -4,11 +4,14 @@ obj/
 .idea/
 .vscode/
 artifacts/
-work/.dotnet/
-work/nuget-packages/
+work/
+TestResults/
 *.user
 *.suo
 *.part
+*.log
+~$*
+*.docx
 packaging/windows/publish/
 packaging/windows/standalone/
 *.wixpdb

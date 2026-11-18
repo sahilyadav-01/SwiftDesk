@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="$(MSBuildThisFileDirectory)..\..\build\$([System.IO.Path]::GetFileName($([System.IO.Path]::GetDirectoryName($(MSBuildThisFileDirectory)))))\Microsoft.Testing.Extensions.Telemetry.props" />
-</Project>
