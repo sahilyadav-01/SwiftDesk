@@ -43,6 +43,7 @@ SwiftDesk provides secure, owner-consented remote support across Windows, Linux 
   - [Option A: Standalone Portable Executable (.exe)](#option-a-standalone-portable-executable-exe)
   - [Option B: Running from Source (.NET CLI)](#option-b-running-from-source-net-cli)
   - [Connecting Two Computers Across the Internet](#connecting-two-computers-across-the-internet)
+  - [Troubleshooting Remote Connections](#troubleshooting-remote-connections)
 - [Enterprise Security & Architecture](#enterprise-security--architecture)
   - [Enterprise Production Identity (OIDC & MFA)](#enterprise-production-identity-oidc--mfa)
   - [Privileged Remote Reboot Service](#privileged-remote-reboot-service)
@@ -294,6 +295,91 @@ To connect two computers across the internet (e.g., Host `624577650753` and View
 4. **Attended Consent**:
    - The remote machine receives an instant attended consent prompt.
    - Click **Allow / Accept**. The interactive remote desktop session begins immediately!
+
+### Troubleshooting Remote Connections
+
+Remote connections require the signaling service, public endpoint, host agent, and controller to remain available at the same time. Check them in this order.
+
+#### 1. Verify signaling health
+
+On the signaling computer, verify the local service first:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:5080/health
+```
+
+Then verify the public HTTPS endpoint from either computer:
+
+```powershell
+Invoke-RestMethod https://your-signaling-domain.com/health
+```
+
+Both commands must return a response containing `"status": "ok"`. If local health fails, start `RemoteDesk.Signaling`. If only public health fails, repair the reverse proxy, tunnel, DNS, or firewall configuration.
+
+#### 2. Confirm both computers use identical settings
+
+The host and controller must use the exact same:
+
+- Signaling server URL, including `https://` and any port.
+- Signaling deployment. A device enrolled on one in-memory signaling instance is unknown to another instance.
+
+The controller's operator key must match the key configured by that signaling deployment. Configure the same operator key on both desktop clients when either computer may initiate a session.
+
+Open **Connection settings** in SwiftDesk on both computers and compare the values. Restart SwiftDesk and `RemoteDesk.Agent` after changing environment variables.
+
+On Windows, inspect every environment-variable scope to find an old installer value:
+
+```powershell
+'Process', 'User', 'Machine' | ForEach-Object {
+    $scope = $_
+    [PSCustomObject]@{
+        Scope = $scope
+        Server = [Environment]::GetEnvironmentVariable('REMOTEDESK_SERVER', $scope)
+    }
+}
+```
+
+Set the current endpoint for the signed-in user, then restart SwiftDesk:
+
+```powershell
+[Environment]::SetEnvironmentVariable(
+    'REMOTEDESK_SERVER',
+    'https://your-signaling-domain.com',
+    'User')
+```
+
+#### 3. Verify the required processes
+
+On the signaling computer:
+
+```powershell
+Get-NetTCPConnection -LocalPort 5080 -State Listen -ErrorAction SilentlyContinue
+Get-Process cloudflared -ErrorAction SilentlyContinue
+```
+
+On the remote host:
+
+```powershell
+Get-Process RemoteDesk.Agent -ErrorAction SilentlyContinue
+```
+
+The host agent must stay running and send regular heartbeats. The owner must also accept the attended-consent prompt before the controller ticket can connect.
+
+#### 4. Do not distribute Quick Tunnel URLs
+
+An account-less `*.trycloudflare.com` Quick Tunnel is temporary. Its hostname stops working when `cloudflared` exits and a later tunnel normally receives a different hostname. Use it only for a short test, update both computers whenever it changes, and keep the terminal or process running.
+
+For installed clients, use a stable HTTPS deployment or an authenticated Cloudflare named tunnel. The MSI builder rejects Quick Tunnel URLs unless `-AllowEphemeralTunnel` is explicitly supplied.
+
+#### 5. Interpret common failures
+
+| Symptom | Likely cause | Corrective action |
+| --- | --- | --- |
+| `Target device was not found` | Host and controller are using different signaling instances, or an in-memory server restarted | Point both computers at one server; use PostgreSQL persistence for production |
+| Connection remains at `Waiting for approval` | Agent is stopped, cannot heartbeat, or consent was not accepted | Start the agent and accept the prompt on the host |
+| HTTP `401` or `403` | Operator key, device secret, OIDC token, role, or MFA policy does not match | Recheck credentials and identity-provider policy |
+| WebSocket connection fails after approval | Proxy does not support WebSocket upgrades, TLS is invalid, or the public endpoint expired | Verify `/health`, WebSocket proxy support, certificate validity, and endpoint lifetime |
+| Connected but no screen appears | Screen-capture permission is unavailable or the relay path is interrupted | Check host capture permissions and signaling logs; keep the WebSocket relay reachable |
 
 ---
 
